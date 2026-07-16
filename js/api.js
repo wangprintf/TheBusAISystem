@@ -15,8 +15,9 @@ const mockDevices = [
 ];
 
 let workOrders = [
+  { id:'WO-20260713-0032', title:'紧急修复滨江大道路面坑洼', sourceAlertId:'AL-20260713-0086', status:'pending', assignee:'待指派', dueAt:'立即处理', updatedAt:'刚刚', location:'滨江大道与迎宾路交叉口' },
   { id:'WO-20260713-0031', title:'处置文一路违规占道施工', sourceAlertId:'AL-20260713-0081', status:'processing', assignee:'城管二中队 · 陈明', dueAt:'今日 16:00', updatedAt:'10:05', location:'文一路地铁站南侧' },
-  { id:'WO-20260713-0029', title:'修复学院路井盖移位', sourceAlertId:'AL-20260713-0078', status:'checking', assignee:'市政养护 · 李群', dueAt:'今日 14:00', updatedAt:'09:50', location:'学院路 318 号' },
+  { id:'WO-20260713-0029', title:'修复学院路井盖移位', sourceAlertId:'AL-20260713-0078', status:'completed', assignee:'市政养护 · 李群', dueAt:'今日 14:00', updatedAt:'09:50', location:'学院路 318 号' },
 ];
 
 async function request(path, options = {}) {

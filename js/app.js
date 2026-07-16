@@ -2,7 +2,7 @@ import { api } from './api.js';
 import { ALERT_STATUS, WORK_ORDER_STATUS } from './types.js';
 
 const navItems = [
-  ['dashboard','▦','数据总览','运营中心'], ['alerts','◉','告警中心','智能审核'], ['orders','▤','工单中心','闭环处置'],
+  ['dashboard','▦','数据总览','运营中心'], ['orders','▤','工单中心','告警与闭环处置'],
   ['map','⌖','地图巡检','空间态势'], ['devices','▣','设备运维','车载设备'], ['settings','⚙','系统配置','规则与权限'],
 ];
 const state = { page:'dashboard', alerts:[], devices:[], orders:[], dashboard:null };
@@ -13,7 +13,9 @@ const kicker = document.querySelector('#page-kicker');
 
 function esc(value = '') { return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function badge(value, type = '') { return `<span class="badge ${type || value}">${esc(value)}</span>`; }
-function statusClass(status) { return { pending:'amber', valid:'green', false:'gray', dispatched:'blue', online:'green', warning:'amber', offline:'red', processing:'blue', checking:'amber', closed:'green' }[status] || 'gray'; }
+function statusClass(status) { return { pending:'amber', valid:'green', false:'gray', dispatched:'blue', online:'green', warning:'amber', offline:'red', processing:'blue', completed:'green' }[status] || 'gray'; }
+function severityClass(severity) { return { '高':'red', '中':'amber', '低':'green', '安全':'green' }[severity] || 'gray'; }
+function setCriticalAlarm(active) { document.body.classList.toggle('critical-alarm', active); }
 function showToast(message) { const el = document.querySelector('#toast'); el.textContent = message; el.classList.add('visible'); setTimeout(() => el.classList.remove('visible'), 2600); }
 
 function renderNav() {
@@ -21,7 +23,7 @@ function renderNav() {
   nav.querySelectorAll('button').forEach(button => button.addEventListener('click', () => go(button.dataset.page)));
 }
 async function go(page) {
-  state.page = page; const item = navItems.find(i => i[0] === page); title.textContent = item[2]; kicker.textContent = item[3]; renderNav();
+  state.page = page; setCriticalAlarm(false); const item = navItems.find(i => i[0] === page); title.textContent = item[2]; kicker.textContent = item[3]; renderNav();
   pageContent.innerHTML = `<div class="loading">正在加载数据…</div>`;
   const renderers = { dashboard:renderDashboard, alerts:renderAlerts, orders:renderOrders, map:renderMap, devices:renderDevices, settings:renderSettings };
   await renderers[page]();
@@ -32,12 +34,12 @@ function metric(label, value, sub, tone) { return `<article class="metric-card">
 async function renderDashboard() {
   await loadCore(); const d = state.dashboard;
   pageContent.innerHTML = `<section class="metrics">${metric('今日告警',d.todayAlerts,'较昨日 +12.4%','blue')}${metric('有效告警率',`${d.validRate}%`,'目标 ≥ 90%','green')}${metric('待处理工单',d.pendingOrders,'其中 3 条高优先级','amber')}${metric('设备在线率',`${d.onlineRate}%`,'28 / 30 台在线','purple')}</section>
-  <section class="grid two-one"><article class="panel"><div class="panel-head"><div><h2>告警趋势</h2><p>近 7 日有效告警数量</p></div><button class="link-btn" data-jump="alerts">查看告警 →</button></div><div class="chart">${d.trend.map((n,i) => `<div class="bar-wrap"><span>${n}</span><div class="bar" style="height:${n/0.52}%"></div><small>${['周二','周三','周四','周五','周六','周日','今日'][i]}</small></div>`).join('')}</div></article>
-  <article class="panel"><div class="panel-head"><div><h2>处置效率</h2><p>今日工单处理状态</p></div></div><div class="donut-row"><div class="donut"><b>86%</b><span>按时处置</span></div><div class="legend"><p><i class="green-dot"></i> 已关闭 <b>36</b></p><p><i class="blue-dot"></i> 处理中 <b>12</b></p><p><i class="amber-dot"></i> 待验收 <b>8</b></p></div></div></article></section>
-  <section class="grid two-one"><article class="panel"><div class="panel-head"><div><h2>待审核告警</h2><p>需要人工确认的 AI 识别结果</p></div><button class="link-btn" data-jump="alerts">全部查看 →</button></div>${alertRows(state.alerts.filter(a => a.status === 'pending').slice(0,3))}</article><article class="panel"><div class="panel-head"><div><h2>设备健康度</h2><p>异常设备需要关注</p></div><button class="link-btn" data-jump="devices">运维中心 →</button></div>${deviceMini(state.devices)}</article></section>`;
+  <section class="grid two-one"><article class="panel"><div class="panel-head"><div><h2>告警趋势</h2><p>近 7 日有效告警数量</p></div><button class="link-btn" data-jump="orders">进入工单中心 →</button></div><div class="chart">${d.trend.map((n,i) => `<div class="bar-wrap"><span>${n}</span><div class="bar" style="height:${n/0.52}%"></div><small>${['周二','周三','周四','周五','周六','周日','今日'][i]}</small></div>`).join('')}</div></article>
+  <article class="panel"><div class="panel-head"><div><h2>处置效率</h2><p>今日工单处理状态</p></div></div><div class="donut-row"><div class="donut"><b>86%</b><span>按时处置</span></div><div class="legend"><p><i class="green-dot"></i> 已完成 <b>36</b></p><p><i class="blue-dot"></i> 处理中 <b>12</b></p><p><i class="amber-dot"></i> 未处理 <b>8</b></p></div></div></article></section>
+  <section class="grid two-one"><article class="panel"><div class="panel-head"><div><h2>待处置告警</h2><p>需要快速响应的 AI 识别事件</p></div><button class="link-btn" data-jump="orders">全部进入工单 →</button></div>${alertRows(state.alerts.filter(a => a.status === 'pending').slice(0,3))}</article><article class="panel"><div class="panel-head"><div><h2>设备健康度</h2><p>异常设备需要关注</p></div><button class="link-btn" data-jump="devices">运维中心 →</button></div>${deviceMini(state.devices)}</article></section>`;
   bindJump();
 }
-function alertRows(alerts) { return `<div class="mini-list">${alerts.map(a => `<button class="alert-mini" data-alert="${a.id}"><span class="scene ${a.thumbnail}">${a.thumbnail}</span><span><b>${a.type}</b><small>${a.location} · ${a.occurredAt}</small></span>${badge(a.severity, a.severity === '高' ? 'red' : 'amber')}</button>`).join('')}</div>`; }
+function alertRows(alerts) { return `<div class="mini-list">${alerts.map(a => `<button class="alert-mini" data-alert="${a.id}"><span class="scene ${a.thumbnail}">${a.thumbnail}</span><span><b>${a.type}</b><small>${a.location} · ${a.occurredAt}</small></span>${badge(a.severity, severityClass(a.severity))}</button>`).join('')}</div>`; }
 function deviceMini(devices) { return `<div class="mini-list">${devices.slice(0,3).map(d => `<div class="device-mini"><i class="${statusClass(d.status)}-dot"></i><span><b>${d.name}</b><small>${d.route} · ${d.lastSeen}</small></span><em>${d.status === 'online' ? '运行正常' : d.status === 'warning' ? '存储空间不足' : '连接中断'}</em></div>`).join('')}</div>`; }
 function bindJump() { document.querySelectorAll('[data-jump]').forEach(x => x.addEventListener('click',() => go(x.dataset.jump))); document.querySelectorAll('[data-alert]').forEach(x => x.addEventListener('click',() => openAlert(x.dataset.alert))); }
 
