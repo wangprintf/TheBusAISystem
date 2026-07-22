@@ -24,7 +24,8 @@ async function request(path, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), API_CONFIG.timeout);
   try {
-    const response = await fetch(`${API_CONFIG.baseUrl}${path}`, { ...options, signal: controller.signal, headers: { 'Content-Type':'application/json', ...(options.headers || {}) } });
+    const session = JSON.parse(sessionStorage.getItem('traffic-auth') || 'null');
+    const response = await fetch(`${API_CONFIG.baseUrl}${path}`, { ...options, signal: controller.signal, headers: { 'Content-Type':'application/json', ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}), ...(options.headers || {}) } });
     if (!response.ok) throw new Error(`请求失败：${response.status}`);
     return response.status === 204 ? null : response.json();
   } finally { clearTimeout(timer); }
@@ -64,6 +65,17 @@ export const api = {
     if (!API_CONFIG.useMock) return request('/work-orders', { method:'POST', body:JSON.stringify(payload) });
     const item = { id:`WO-20260713-${String(workOrders.length + 32).padStart(4,'0')}`, status:'pending', assignee:'待指派', dueAt:'待设置', updatedAt:'刚刚', ...payload }; workOrders = [item, ...workOrders]; return item;
   },
-  async getDevices() { return API_CONFIG.useMock ? mockDevices : request('/devices'); },
+  async getDevices() {
+    const result = await request('/api/devices');
+    const devices = Array.isArray(result) ? result : (result.data || []);
+    return devices.map((device) => ({
+      id: device.device_id,
+      name: device.license_plate,
+      status: device.status,
+      abnormalInfo: device.abnormal_info,
+      temperature: device.temperature,
+      storage: device.storage,
+    }));
+  },
   async updateSettings(payload) { return API_CONFIG.useMock ? payload : request('/settings', { method:'PUT', body:JSON.stringify(payload) }); },
 };
