@@ -30,6 +30,24 @@ async function request(path, options = {}) {
   } finally { clearTimeout(timer); }
 }
 
+export async function login(accountId, password) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), API_CONFIG.timeout);
+  try {
+    const response = await fetch(`${API_CONFIG.baseUrl}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ id: accountId, password }),
+      signal: controller.signal,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success || !result.token) throw new Error(result.message || '账号或密码错误');
+    return result;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export const api = {
   async getDashboard() { return API_CONFIG.useMock ? { todayAlerts:86, validRate:92.6, pendingOrders:14, onlineRate:93.3, trend:[18,25,20,35,28,46,39] } : request('/dashboard'); },
   async getAlerts(filters = {}) {
