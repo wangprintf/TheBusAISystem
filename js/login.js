@@ -1,9 +1,9 @@
 import { login } from './api.js';
 
 const roles = [
-  { id: 'user', title: '用户登录', description: '查看交通事件与设备信息', icon: '用户' },
-  { id: 'police', title: '交警登录', description: '处理交通事件与处置状态', icon: '交警' },
-  { id: 'maintenance', title: '维护登录', description: '查看设备并执行运维工作', icon: '维护' },
+  { id: 'admin', title: '管理员登录', description: '统筹交管、路政、运维全部事务', icon: '全域管理' },
+  { id: 'traffic', title: '交管登录', description: '受理处置交通事件，更新处置进度', icon: '交管执勤' },
+  { id: 'maintenance', title: '运维登录', description: '路网维护与设备运维实时巡检', icon: '路政与设备运维' },
 ];
 
 let selectedRole = roles[0].id;
