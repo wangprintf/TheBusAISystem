@@ -14,10 +14,10 @@ function renderLogin() {
   root.innerHTML = `
     <main class="login-page">
       <section class="login-intro">
-        <div class="login-brand"><span>智</span>交通事件协同平台</div>
+        <div class="login-brand"><span>智</span>智巡云</div>
         <p class="login-kicker">TRAFFIC EVENT MANAGEMENT</p>
         <h1>统一登录，协同处置城市交通事件</h1>
-        <p class="login-copy">请选择身份后，使用系统分配的账号和密码登录。</p>
+        <p class="login-copy">智慧城市治理新方案，共同保障城市交通</p>
       </section>
       <section class="login-card" aria-labelledby="login-title">
         <p class="login-card-kicker">欢迎使用</p>
