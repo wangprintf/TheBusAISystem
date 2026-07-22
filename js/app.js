@@ -26,10 +26,15 @@ async function go(page) {
   state.page = page; setCriticalAlarm(false); const item = navItems.find(i => i[0] === page); title.textContent = item[2]; kicker.textContent = item[3]; renderNav();
   pageContent.innerHTML = `<div class="loading">正在加载数据…</div>`;
   const renderers = { dashboard:renderDashboard, alerts:renderAlerts, orders:renderOrders, map:renderMap, devices:renderDevices, settings:renderSettings };
-  await renderers[page]();
+  try {
+    await renderers[page]();
+  } catch (error) {
+    pageContent.innerHTML = `<div class="loading">数据加载失败：${esc(error.message || '无法连接服务')}<br><br><button class="primary-btn" id="retry-load">重新加载</button></div>`;
+    document.querySelector('#retry-load').addEventListener('click', () => go(page));
+  }
 }
 
-async function loadCore() { [state.dashboard, state.alerts, state.orders, state.devices] = await Promise.all([api.getDashboard(), api.getAlerts(), api.getWorkOrders(), api.getDevices()]); }
+async function loadCore() { [state.dashboard, state.alerts, state.orders, state.devices] = await Promise.all([api.getDashboard(), api.getAlerts(), api.getWorkOrders(), api.getDevices().catch(() => [])]); }
 function metric(label, value, sub, tone) { return `<article class="metric-card"><div class="metric-label">${label}<span class="metric-icon ${tone}">●</span></div><strong>${value}</strong><small>${sub}</small></article>`; }
 async function renderDashboard() {
   await loadCore(); const d = state.dashboard;
