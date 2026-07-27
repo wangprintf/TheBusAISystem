@@ -31,6 +31,14 @@ async function request(path, options = {}) {
   } finally { clearTimeout(timer); }
 }
 
+function requestForm(path, values) {
+  return request(path, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(values),
+  });
+}
+
 export async function login(accountId, password) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), API_CONFIG.timeout);
@@ -60,7 +68,15 @@ export const api = {
     const alert = mockAlerts.find(a => a.id === id); if (!alert) throw new Error('告警不存在');
     alert.status = action.status; return alert;
   },
-  async getWorkOrders() { return API_CONFIG.useMock ? workOrders : request('/work-orders'); },
+  async getWorkOrders() {
+    const [events, finishMedia] = await Promise.all([request('/api/events'), request('/api/events/finish')]);
+    const finishByEventId = new Map((Array.isArray(finishMedia) ? finishMedia : []).map(item => [String(item.id), item]));
+    return (Array.isArray(events) ? events : []).map((event) => mapDatabaseEvent(event, finishByEventId.get(String(event.id))));
+  },
+  async reviewWorkOrder(id, isValid) {
+    if (![0, 1].includes(Number(isValid))) throw new Error('审核结果必须为 0 或 1');
+    return requestForm('/api/events/update', { id: String(id), is_valid: String(isValid) });
+  },
   async createWorkOrder(payload) {
     if (!API_CONFIG.useMock) return request('/work-orders', { method:'POST', body:JSON.stringify(payload) });
     const item = { id:`WO-20260713-${String(workOrders.length + 32).padStart(4,'0')}`, status:'pending', assignee:'待指派', dueAt:'待设置', updatedAt:'刚刚', ...payload }; workOrders = [item, ...workOrders]; return item;
@@ -85,4 +101,29 @@ function toNumberOrNull(value) {
   if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function mapDatabaseEvent(event, finishMedia) {
+  const isValid = event.is_valid === null || event.is_valid === undefined || event.is_valid === '' ? null : Number(event.is_valid);
+  const processStatus = event.process_status || '未处理';
+  const status = processStatus === '已完成' ? 'completed' : (processStatus === '处理中' ? 'processing' : 'pending');
+  return {
+    id: String(event.id),
+    title: [event.event_type, event.detail_type].filter(Boolean).join(' · ') || `事件 ${event.id}`,
+    status,
+    processStatus,
+    priority: event.priority_level || '普通',
+    occurredAt: event.report_time || '--',
+    finishAt: event.finish_time || '',
+    location: event.longitude && event.latitude ? `${event.longitude}, ${event.latitude}` : '位置暂缺',
+    licensePlate: event.license_plate || '未识别车牌',
+    remarks: event.remarks || '',
+    isValid: isValid === 0 || isValid === 1 ? isValid : null,
+    finishMediaUrl: safeMediaUrl(finishMedia?.media_url),
+  };
+}
+
+function safeMediaUrl(value) {
+  if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return '';
+  return value;
 }

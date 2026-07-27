@@ -77,7 +77,7 @@ async function go(page) {
   }
 }
 
-async function loadCore() { [state.dashboard, state.alerts, state.orders, state.devices] = await Promise.all([api.getDashboard(), api.getAlerts(), api.getWorkOrders(), api.getDevices().catch(() => [])]); }
+async function loadCore() { [state.dashboard, state.alerts, state.orders, state.devices] = await Promise.all([api.getDashboard(), api.getAlerts(), api.getWorkOrders().catch(() => []), api.getDevices().catch(() => [])]); }
 function metric(label, value, sub, tone) { return `<article class="metric-card"><div class="metric-label">${label}<span class="metric-icon ${tone}">●</span></div><strong>${value}</strong><small>${sub}</small></article>`; }
 async function renderDashboard() {
   await loadCore(); const d = state.dashboard;
@@ -107,6 +107,32 @@ async function openAlert(id) {
 }
 
 async function renderOrders() {
+  state.orders = await api.getWorkOrders();
+  const reviewPending = state.orders.filter(order => order.isValid === null).length;
+  const invalidCount = state.orders.filter(order => order.isValid === 0).length;
+  const imageCount = state.orders.filter(order => order.finishMediaUrl).length;
+  pageContent.innerHTML = `<section class="metrics compact">${metric('数据库工单',state.orders.length,'来自 traffic_events','blue')}${metric('待人工审核',reviewPending,'尚未写入审核结果','amber')}${metric('完结取证图片',imageCount,'来自腾讯云 finish 桶','green')}</section><section class="panel database-order-intro"><div><h2>工单人工审核</h2><p>审核结果会直接写入 traffic_events.is_valid：0 为无效，1 为有效。</p></div><span>${invalidCount ? `已判定无效 ${invalidCount} 条` : '暂无无效工单'}</span></section><section class="kanban">${Object.entries(WORK_ORDER_STATUS).map(([key,label])=>`<div class="kanban-col"><h3><i class="${statusClass(key)}-dot"></i>${label}<span>${state.orders.filter(order=>order.status===key).length}</span></h3><div>${state.orders.filter(order=>order.status===key).map(databaseOrderCard).join('') || `<p class="empty-card">暂无工单</p>`}</div></div>`).join('')}</section>`;
+  pageContent.querySelectorAll('[data-order-review]').forEach(button => button.addEventListener('click', async () => {
+    const isValid = Number(button.dataset.valid);
+    button.disabled = true;
+    try {
+      await api.reviewWorkOrder(button.dataset.orderReview, isValid);
+      showToast(isValid === 0 ? '已判定无效，并写入数据库' : '已确认有效，并写入数据库');
+      await renderOrders();
+    } catch (error) {
+      button.disabled = false;
+      showToast(error.message || '审核结果写入失败');
+    }
+  }));
+}
+
+function databaseOrderCard(order) {
+  const review = order.isValid === 1 ? badge('人工审核：有效','green') : order.isValid === 0 ? badge('人工审核：无效','gray') : badge('待人工审核','amber');
+  const evidence = order.finishMediaUrl ? `<figure class="order-evidence"><img src="${esc(order.finishMediaUrl)}" alt="工单 ${esc(order.id)} 的完结取证图片" loading="lazy" /></figure>` : `<div class="order-evidence-empty">暂无完结取证图片</div>`;
+  return `<article class="order-card database-order-card"><span>事件 #${esc(order.id)} · ${esc(order.processStatus)}</span><div class="order-card-badges">${badge(order.priority, severityClass(order.priority))}${review}</div><h4>${esc(order.title)}</h4>${evidence}<p>车牌：${esc(order.licensePlate)}<br>位置：${esc(order.location)}</p>${order.remarks ? `<p class="order-remarks">备注：${esc(order.remarks)}</p>` : ''}<footer><b>${esc(order.occurredAt)}</b><em>${order.finishAt ? `完成 ${esc(order.finishAt)}` : '等待处置'}</em></footer><div class="review-actions"><button class="outline-btn" type="button" data-order-review="${esc(order.id)}" data-valid="0">判定无效</button><button class="primary-btn" type="button" data-order-review="${esc(order.id)}" data-valid="1">确认有效</button></div></article>`;
+}
+
+async function renderLegacyOrders() {
   [state.orders, state.alerts] = await Promise.all([api.getWorkOrders(), api.getAlerts()]);
   const urgentAlerts = state.alerts.filter(a => a.severity === '高' && a.status !== 'false');
   setCriticalAlarm(urgentAlerts.length > 0);
