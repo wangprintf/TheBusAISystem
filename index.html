@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="./alert-styles.css" />
     <link rel="stylesheet" href="./login.css" />
     <link rel="stylesheet" href="./login-custom.css" />
+    <link rel="stylesheet" href="./app-custom.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -19,13 +20,14 @@
       <main class="main-content">
         <header class="topbar">
           <div><p class="eyebrow" id="page-kicker">运营中心</p><h1 id="page-title">数据总览</h1></div>
-          <div class="top-actions"><button class="ghost-btn" id="date-button">▣ 2026年07月13日</button><button class="icon-btn" aria-label="通知">◌<i>3</i></button><div class="avatar">王</div></div>
+          <div class="top-actions"><button class="ghost-btn" id="date-button" type="button" aria-label="当前时间"></button><button class="icon-btn" id="notification-button" type="button" aria-label="查看告警信息">◌<i>3</i></button><button class="avatar" id="profile-button" type="button" aria-label="个人基础设置">王</button></div>
         </header>
         <section id="page-content"></section>
       </main>
     </div>
     <div id="toast" class="toast" role="status"></div>
     <div id="drawer-root"></div>
+    <div id="profile-root"></div>
     <script type="module" src="./js/login.js"></script>
     <script type="module" src="./js/app.js"></script>
   </body>

@@ -1,0 +1,12 @@
+.avatar{
+  border:0;
+  cursor:pointer;
+  font:inherit;
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.avatar:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(52,120,246,.2)}
+.ghost-btn{font-variant-numeric:tabular-nums;min-width:208px}
+.profile-scrim{position:fixed;inset:0;z-index:9;background:transparent}
+.profile-popover{position:fixed;z-index:10;right:34px;top:86px;width:310px;padding:20px;background:#fff;border:1px solid #e4eaf4;border-radius:14px;box-shadow:0 18px 45px rgba(26,45,80,.18);display:grid;gap:14px}
+.profile-popover-head{display:flex;align-items:center;gap:11px;padding-bottom:14px;border-bottom:1px solid #edf0f5}.profile-preview{width:43px;height:43px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#dce9ff,#c6dcff);color:#3478f6;font-weight:700;font-size:17px}.profile-popover-head b,.profile-popover-head small{display:block}.profile-popover-head small{margin-top:3px;color:#8a95a7;font-size:12px}.close-profile{margin-left:auto;border:0;background:transparent;color:#8792a5;font-size:24px;cursor:pointer}.profile-popover label{display:grid;gap:7px;color:#596578;font-size:12px}.profile-popover input{width:100%}.profile-popover .primary-btn{width:100%;margin-top:2px}.logout-btn{border:0;background:#fff3f3;color:#d74c54;border-radius:7px;padding:9px 14px;cursor:pointer;font:inherit}
+@media(max-width:1000px){.ghost-btn{min-width:auto}.profile-popover{right:20px;top:78px}}

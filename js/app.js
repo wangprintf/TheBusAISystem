@@ -3,13 +3,18 @@ import { ALERT_STATUS, WORK_ORDER_STATUS } from './types.js';
 
 const navItems = [
   ['dashboard','▦','数据总览','运营中心'], ['orders','▤','工单中心','告警与闭环处置'],
-  ['map','⌖','地图巡检','空间态势'], ['devices','▣','设备运维','车载设备'], ['settings','⚙','系统配置','规则与权限'],
+  ['alerts','◌','告警信息','实时告警'], ['map','⌖','地图巡检','空间态势'], ['devices','▣','设备运维','车载设备'], ['settings','⚙','系统配置','规则与权限'],
 ];
 const state = { page:'dashboard', alerts:[], devices:[], orders:[], dashboard:null };
 const pageContent = document.querySelector('#page-content');
 const nav = document.querySelector('#main-nav');
 const title = document.querySelector('#page-title');
 const kicker = document.querySelector('#page-kicker');
+const dateButton = document.querySelector('#date-button');
+const notificationButton = document.querySelector('#notification-button');
+const profileButton = document.querySelector('#profile-button');
+const profileRoot = document.querySelector('#profile-root');
+const PROFILE_KEY = 'traffic-user-profile';
 
 function esc(value = '') { return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function badge(value, type = '') { return `<span class="badge ${type || value}">${esc(value)}</span>`; }
@@ -17,6 +22,32 @@ function statusClass(status) { return { pending:'amber', valid:'green', false:'g
 function severityClass(severity) { return { '高':'red', '中':'amber', '低':'green', '安全':'green' }[severity] || 'gray'; }
 function setCriticalAlarm(active) { document.body.classList.toggle('critical-alarm', active); }
 function showToast(message) { const el = document.querySelector('#toast'); el.textContent = message; el.classList.add('visible'); setTimeout(() => el.classList.remove('visible'), 2600); }
+
+function getProfile() {
+  const fallback = { name:'王珊', avatar:'王' };
+  try { return { ...fallback, ...JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}') }; } catch { return fallback; }
+}
+function profileAvatar(profile = getProfile()) { return (profile.avatar || profile.name || '用户').trim().slice(0, 2) || '用户'; }
+function applyProfile() { profileButton.textContent = profileAvatar(); profileButton.title = `${getProfile().name}的基础设置`; }
+function updateClock() {
+  const now = new Date();
+  const date = new Intl.DateTimeFormat('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit' }).format(now).replaceAll('/', '年').replace(/年(\d{2})$/, '月$1日');
+  const time = new Intl.DateTimeFormat('zh-CN', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).format(now);
+  dateButton.textContent = `▣ ${date} ${time}`;
+}
+function closeProfile() { profileRoot.innerHTML = ''; }
+function openProfile() {
+  const profile = getProfile();
+  profileRoot.innerHTML = `<div class="profile-scrim" data-close-profile></div><section class="profile-popover" aria-label="个人基础设置"><div class="profile-popover-head"><div class="profile-preview">${esc(profileAvatar(profile))}</div><div><b>${esc(profile.name)}</b><small>个人基础设置</small></div><button class="close-profile" type="button" aria-label="关闭" data-close-profile>×</button></div><label>用户名称<input id="profile-name" maxlength="16" value="${esc(profile.name)}" placeholder="请输入用户名称" /></label><label>头像文字<input id="profile-avatar" maxlength="2" value="${esc(profile.avatar)}" placeholder="最多两个字符" /></label><button class="primary-btn" id="save-profile" type="button">保存设置</button><button class="logout-btn" id="logout-button" type="button">退出登录</button></section>`;
+  profileRoot.querySelectorAll('[data-close-profile]').forEach(button => button.addEventListener('click', closeProfile));
+  profileRoot.querySelector('#save-profile').addEventListener('click', () => {
+    const name = profileRoot.querySelector('#profile-name').value.trim() || '未命名用户';
+    const avatar = profileRoot.querySelector('#profile-avatar').value.trim() || name.slice(0, 2);
+    localStorage.setItem(PROFILE_KEY, JSON.stringify({ name, avatar }));
+    applyProfile(); closeProfile(); showToast('个人设置已保存');
+  });
+  profileRoot.querySelector('#logout-button').addEventListener('click', () => { sessionStorage.removeItem('traffic-auth'); window.location.reload(); });
+}
 
 function renderNav() {
   nav.innerHTML = navItems.map(([key, icon, label]) => `<button class="nav-item ${state.page === key ? 'active' : ''}" data-page="${key}"><span>${icon}</span>${label}</button>`).join('');
@@ -82,5 +113,11 @@ async function renderMap() { if (!state.alerts.length) state.alerts=await api.ge
 async function renderDevices() { state.devices=await api.getDevices(); const online=state.devices.filter(d=>d.status==='正常').length; const attention=state.devices.filter(d=>d.status==='异常').length; pageContent.innerHTML=`<section class="metrics compact">${metric('接入设备',state.devices.length,'来自车辆设备数据库','blue')}${metric('当前在线',online,'状态正常的设备','green')}${metric('需关注',attention,'存在异常的设备','amber')}</section><section class="panel table-panel"><div class="panel-head"><div><h2>车载设备</h2><p>车辆牌照、设备状态与资源状态</p></div><button class="outline-btn">导出运维记录</button></div><table><thead><tr><th>设备编号</th><th>车辆牌照</th><th>异常信息</th><th>存储</th><th>温度</th><th>状态</th></tr></thead><tbody>${state.devices.map(d=>`<tr><td><b>${d.id || '--'}</b></td><td><b>${d.name || '--'}</b></td><td>${d.abnormalInfo || '--'}</td><td>${d.storage == null ? '--' : `<div class="progress"><i style="width:${d.storage}%"></i></div>${d.storage}%`}</td><td>${d.temperature == null ? '--' : d.temperature+'°C'}</td><td>${badge(d.status || '--',d.status==='正常'?'green':d.status==='异常'?'amber':'gray')}</td></tr>`).join('')}</tbody></table></section>`; }
 
 async function renderSettings() { pageContent.innerHTML=`<section class="settings-layout"><article class="panel setting-card"><h2>告警判定规则</h2><p>调整后会在下一次设备同步时生效。</p><label>违停最短判定时长 <div class="input-suffix"><input id="stop-minutes" type="number" value="180" min="30"><span>秒</span></div></label><label>道路病害告警置信度 <div class="input-suffix"><input id="confidence" type="number" value="85" min="1" max="100"><span>%</span></div></label><label class="switch-row">高优先级事件即时通知 <input id="notice" type="checkbox" checked></label><button class="primary-btn" id="save-settings">保存配置</button></article><article class="panel setting-card"><h2>电子围栏与白名单</h2><p>配置禁行区域、重点巡检路段和特种车辆白名单。</p><button class="outline-btn wide-btn">管理电子围栏</button><button class="outline-btn wide-btn">管理白名单车辆</button><hr><h3>模型发布</h3><p>当前生产版本：<b>vision-1.4.2</b></p><button class="text-btn">查看模型版本记录 →</button></article></section>`; document.querySelector('#save-settings').addEventListener('click',async()=>{await api.updateSettings({stopDuration:Number(document.querySelector('#stop-minutes').value),confidence:Number(document.querySelector('#confidence').value),instantNotice:document.querySelector('#notice').checked});showToast('配置已保存，将在设备下次同步时生效');}); }
+
+applyProfile();
+updateClock();
+setInterval(updateClock, 1000);
+notificationButton.addEventListener('click', () => go('alerts'));
+profileButton.addEventListener('click', openProfile);
 
 await go('dashboard');
