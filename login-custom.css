@@ -1,1 +1,49 @@
 .login-kicker{font-size:14px}
+
+/* 登录页品牌主视觉 */
+.login-brand{
+  position:relative;
+  width:max-content;
+  font-size:34px;
+  font-weight:800;
+  letter-spacing:2px;
+  gap:16px;
+  padding:16px 22px 16px 0;
+  text-shadow:0 5px 18px rgba(4,20,45,.28);
+}
+.login-brand::before{
+  content:'';
+  position:absolute;
+  left:-20px;
+  right:-36px;
+  bottom:0;
+  height:1px;
+  background:linear-gradient(90deg,#55d6fb 0 30%,rgba(161,215,255,.38) 65%,transparent);
+}
+.login-brand::after{
+  content:'';
+  position:absolute;
+  width:180px;
+  height:180px;
+  left:-86px;
+  top:-63px;
+  z-index:-1;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(72,194,242,.22),transparent 68%);
+  filter:blur(3px);
+}
+.login-brand span{
+  width:58px;
+  height:58px;
+  border-radius:16px;
+  font-size:28px;
+  color:#fff;
+  background:linear-gradient(145deg,#77ddfa,#319acf);
+  border:1px solid rgba(255,255,255,.45);
+  box-shadow:0 10px 25px rgba(20,167,213,.35),inset 0 1px 0 rgba(255,255,255,.45);
+}
+
+@media(max-width:780px){
+  .login-brand{font-size:27px;gap:12px;padding-bottom:12px}
+  .login-brand span{width:46px;height:46px;border-radius:13px;font-size:22px}
+}
