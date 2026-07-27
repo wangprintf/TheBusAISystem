@@ -15,6 +15,9 @@ const notificationButton = document.querySelector('#notification-button');
 const profileButton = document.querySelector('#profile-button');
 const profileRoot = document.querySelector('#profile-root');
 const PROFILE_KEY = 'traffic-user-profile';
+let deviceRefreshTimer = null;
+let deviceRefreshInFlight = false;
+let lastDeviceRefresh = null;
 
 function esc(value = '') { return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function badge(value, type = '') { return `<span class="badge ${type || value}">${esc(value)}</span>`; }
@@ -22,6 +25,14 @@ function statusClass(status) { return { pending:'amber', valid:'green', false:'g
 function severityClass(severity) { return { '高':'red', '中':'amber', '低':'green', '安全':'green' }[severity] || 'gray'; }
 function setCriticalAlarm(active) { document.body.classList.toggle('critical-alarm', active); }
 function showToast(message) { const el = document.querySelector('#toast'); el.textContent = message; el.classList.add('visible'); setTimeout(() => el.classList.remove('visible'), 2600); }
+function stopDeviceAutoRefresh() { if (deviceRefreshTimer) { clearInterval(deviceRefreshTimer); deviceRefreshTimer = null; } }
+function startDeviceAutoRefresh() {
+  if (deviceRefreshTimer) return;
+  deviceRefreshTimer = setInterval(() => {
+    if (state.page !== 'devices') { stopDeviceAutoRefresh(); return; }
+    refreshDevices().catch(() => {});
+  }, 5000);
+}
 
 function getProfile() {
   const fallback = { name:'王珊', avatar:'王' };
@@ -54,6 +65,7 @@ function renderNav() {
   nav.querySelectorAll('button').forEach(button => button.addEventListener('click', () => go(button.dataset.page)));
 }
 async function go(page) {
+  if (page !== 'devices') stopDeviceAutoRefresh();
   state.page = page; setCriticalAlarm(false); const item = navItems.find(i => i[0] === page); title.textContent = item[2]; kicker.textContent = item[3]; renderNav();
   pageContent.innerHTML = `<div class="loading">正在加载数据…</div>`;
   const renderers = { dashboard:renderDashboard, alerts:renderAlerts, orders:renderOrders, map:renderMap, devices:renderDevices, settings:renderSettings };
@@ -110,7 +122,20 @@ function orderCard(o) { const source = state.alerts.find(a => a.id === o.sourceA
 
 async function renderMap() { if (!state.alerts.length) state.alerts=await api.getAlerts(); pageContent.innerHTML=`<section class="map-page"><div class="map-panel"><div class="map-grid"></div><div class="map-head"><b>城市巡检态势</b><span>${state.alerts.length} 个事件点位</span></div><div class="route-line"></div>${state.alerts.map((a,i)=>`<button class="map-pin ${a.severity==='高'?'danger':''}" style="left:${24+i*15}%;top:${32+(i%2)*26}%" data-alert="${a.id}">${i+1}</button>`).join('')}<div class="map-legend">● 高优先级　● 一般事件　━━ 公交巡检线路</div></div><aside class="map-side panel"><h2>巡检图层</h2><label class="switch-row">道路病害 <input type="checkbox" checked></label><label class="switch-row">道路设施 <input type="checkbox" checked></label><label class="switch-row">施工市容 <input type="checkbox" checked></label><label class="switch-row">车载设备 <input type="checkbox" checked></label><hr><h3>高优先级事件</h3>${alertRows(state.alerts.filter(x=>x.severity==='高'))}</aside></section>`; document.querySelectorAll('[data-alert]').forEach(x=>x.addEventListener('click',()=>openAlert(x.dataset.alert))); }
 
-async function renderDevices() { state.devices=await api.getDevices(); const online=state.devices.filter(d=>d.status==='正常').length; const attention=state.devices.filter(d=>d.status==='异常').length; pageContent.innerHTML=`<section class="metrics compact">${metric('接入设备',state.devices.length,'来自车辆设备数据库','blue')}${metric('当前在线',online,'状态正常的设备','green')}${metric('需关注',attention,'存在异常的设备','amber')}</section><section class="panel table-panel"><div class="panel-head"><div><h2>车载设备</h2><p>车辆牌照、设备状态与资源状态</p></div><button class="outline-btn">导出运维记录</button></div><table><thead><tr><th>设备编号</th><th>车辆牌照</th><th>异常信息</th><th>存储</th><th>温度</th><th>状态</th></tr></thead><tbody>${state.devices.map(d=>`<tr><td><b>${d.id || '--'}</b></td><td><b>${d.name || '--'}</b></td><td>${d.abnormalInfo || '--'}</td><td>${d.storage == null ? '--' : `<div class="progress"><i style="width:${d.storage}%"></i></div>${d.storage}%`}</td><td>${d.temperature == null ? '--' : d.temperature+'°C'}</td><td>${badge(d.status || '--',d.status==='正常'?'green':d.status==='异常'?'amber':'gray')}</td></tr>`).join('')}</tbody></table></section>`; }
+async function renderDevices() { await refreshDevices(); startDeviceAutoRefresh(); }
+async function refreshDevices() {
+  if (deviceRefreshInFlight) return;
+  deviceRefreshInFlight = true;
+  try {
+    state.devices = await api.getDevices();
+    lastDeviceRefresh = new Date();
+    if (state.page !== 'devices') return;
+    const online=state.devices.filter(d=>d.status==='正常').length;
+    const attention=state.devices.filter(d=>d.status==='异常').length;
+    const refreshedAt = new Intl.DateTimeFormat('zh-CN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(lastDeviceRefresh);
+    pageContent.innerHTML=`<section class="metrics compact">${metric('接入设备',state.devices.length,'来自车辆设备数据库','blue')}${metric('当前在线',online,'状态正常的设备','green')}${metric('需关注',attention,'存在异常的设备','amber')}</section><section class="panel table-panel"><div class="panel-head"><div><h2>车载设备</h2><p>每 5 秒自动同步 · 上次刷新 ${refreshedAt}</p></div><button class="outline-btn">导出运维记录</button></div><table><thead><tr><th>设备编号</th><th>车辆牌照</th><th>异常信息</th><th>存储</th><th>温度</th><th>状态</th></tr></thead><tbody>${state.devices.map(d=>`<tr><td><b>${d.id || '--'}</b></td><td><b>${d.name || '--'}</b></td><td>${d.abnormalInfo || '--'}</td><td>${d.storage == null ? '--' : `<div class="progress"><i style="width:${d.storage}%"></i></div>${d.storage}%`}</td><td>${d.temperature == null ? '--' : d.temperature+'°C'}</td><td>${badge(d.status || '--',d.status==='正常'?'green':d.status==='异常'?'amber':'gray')}</td></tr>`).join('')}</tbody></table></section>`;
+  } finally { deviceRefreshInFlight = false; }
+}
 
 async function renderSettings() { pageContent.innerHTML=`<section class="settings-layout"><article class="panel setting-card"><h2>告警判定规则</h2><p>调整后会在下一次设备同步时生效。</p><label>违停最短判定时长 <div class="input-suffix"><input id="stop-minutes" type="number" value="180" min="30"><span>秒</span></div></label><label>道路病害告警置信度 <div class="input-suffix"><input id="confidence" type="number" value="85" min="1" max="100"><span>%</span></div></label><label class="switch-row">高优先级事件即时通知 <input id="notice" type="checkbox" checked></label><button class="primary-btn" id="save-settings">保存配置</button></article><article class="panel setting-card"><h2>电子围栏与白名单</h2><p>配置禁行区域、重点巡检路段和特种车辆白名单。</p><button class="outline-btn wide-btn">管理电子围栏</button><button class="outline-btn wide-btn">管理白名单车辆</button><hr><h3>模型发布</h3><p>当前生产版本：<b>vision-1.4.2</b></p><button class="text-btn">查看模型版本记录 →</button></article></section>`; document.querySelector('#save-settings').addEventListener('click',async()=>{await api.updateSettings({stopDuration:Number(document.querySelector('#stop-minutes').value),confidence:Number(document.querySelector('#confidence').value),instantNotice:document.querySelector('#notice').checked});showToast('配置已保存，将在设备下次同步时生效');}); }
 
