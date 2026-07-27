@@ -69,13 +69,20 @@ export const api = {
     const result = await request('/api/devices');
     const devices = Array.isArray(result) ? result : (result.data || []);
     return devices.map((device) => ({
-      id: device.device_id,
-      name: device.license_plate,
-      status: device.status,
-      abnormalInfo: device.abnormal_info,
-      temperature: device.temperature,
-      storage: device.storage,
+      id: device.device_id || '',
+      name: device.license_plate || '',
+      status: device.status || '未知',
+      abnormalInfo: device.abnormal_info || '',
+      temperature: toNumberOrNull(device.temperature),
+      storage: toNumberOrNull(device.storage),
+      lastSeen: '数据库同步',
     }));
   },
   async updateSettings(payload) { return API_CONFIG.useMock ? payload : request('/settings', { method:'PUT', body:JSON.stringify(payload) }); },
 };
+
+function toNumberOrNull(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}

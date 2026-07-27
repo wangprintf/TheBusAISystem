@@ -13,7 +13,7 @@ const kicker = document.querySelector('#page-kicker');
 
 function esc(value = '') { return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function badge(value, type = '') { return `<span class="badge ${type || value}">${esc(value)}</span>`; }
-function statusClass(status) { return { pending:'amber', valid:'green', false:'gray', dispatched:'blue', online:'green', warning:'amber', offline:'red', processing:'blue', completed:'green' }[status] || 'gray'; }
+function statusClass(status) { return { pending:'amber', valid:'green', false:'gray', dispatched:'blue', online:'green', warning:'amber', offline:'red', processing:'blue', completed:'green', '正常':'green', '异常':'amber', '离线':'red' }[status] || 'gray'; }
 function severityClass(severity) { return { '高':'red', '中':'amber', '低':'green', '安全':'green' }[severity] || 'gray'; }
 function setCriticalAlarm(active) { document.body.classList.toggle('critical-alarm', active); }
 function showToast(message) { const el = document.querySelector('#toast'); el.textContent = message; el.classList.add('visible'); setTimeout(() => el.classList.remove('visible'), 2600); }
@@ -45,7 +45,7 @@ async function renderDashboard() {
   bindJump();
 }
 function alertRows(alerts) { return `<div class="mini-list">${alerts.map(a => `<button class="alert-mini" data-alert="${a.id}"><span class="scene ${a.thumbnail}">${a.thumbnail}</span><span><b>${a.type}</b><small>${a.location} · ${a.occurredAt}</small></span>${badge(a.severity, severityClass(a.severity))}</button>`).join('')}</div>`; }
-function deviceMini(devices) { return `<div class="mini-list">${devices.slice(0,3).map(d => `<div class="device-mini"><i class="${statusClass(d.status)}-dot"></i><span><b>${d.name}</b><small>${d.route} · ${d.lastSeen}</small></span><em>${d.status === 'online' ? '运行正常' : d.status === 'warning' ? '存储空间不足' : '连接中断'}</em></div>`).join('')}</div>`; }
+function deviceMini(devices) { return `<div class="mini-list">${devices.slice(0,3).map(d => `<div class="device-mini"><i class="${statusClass(d.status)}-dot"></i><span><b>${esc(d.name || d.id || '--')}</b><small>${esc(d.abnormalInfo || d.lastSeen || '数据库同步')}</small></span><em>${esc(d.status || '未知')}</em></div>`).join('')}</div>`; }
 function bindJump() { document.querySelectorAll('[data-jump]').forEach(x => x.addEventListener('click',() => go(x.dataset.jump))); document.querySelectorAll('[data-alert]').forEach(x => x.addEventListener('click',() => openAlert(x.dataset.alert))); }
 
 async function renderAlerts() {
