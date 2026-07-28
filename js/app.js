@@ -109,7 +109,7 @@ async function openAlert(id) {
 
 async function renderOrders(page = state.ordersPage) {
   state.orders = await api.getWorkOrders();
-  const pageSize = 6;
+  const pageSize = 8;
   const totalPages = Math.max(1, Math.ceil(state.orders.length / pageSize));
   state.ordersPage = Math.min(Math.max(1, Number(page) || 1), totalPages);
   const visibleOrders = state.orders.slice((state.ordersPage - 1) * pageSize, state.ordersPage * pageSize);
