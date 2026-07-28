@@ -109,15 +109,16 @@ async function openAlert(id) {
 
 async function renderOrders(page = state.ordersPage) {
   state.orders = await api.getWorkOrders();
-  const pageSize = 8;
-  const totalPages = Math.max(1, Math.ceil(state.orders.length / pageSize));
+  const slotsPerStatus = 2;
+  const ordersByStatus = Object.fromEntries(Object.keys(WORK_ORDER_STATUS).map(key => [key, state.orders.filter(order => order.status === key)]));
+  const totalPages = Math.max(1, ...Object.values(ordersByStatus).map(orders => Math.ceil(orders.length / slotsPerStatus)));
   state.ordersPage = Math.min(Math.max(1, Number(page) || 1), totalPages);
-  const visibleOrders = state.orders.slice((state.ordersPage - 1) * pageSize, state.ordersPage * pageSize);
-  const statusCounts = Object.fromEntries(Object.keys(WORK_ORDER_STATUS).map(key => [key, state.orders.filter(order => order.status === key).length]));
+  const visibleOrders = Object.fromEntries(Object.entries(ordersByStatus).map(([key, orders]) => [key, orders.slice((state.ordersPage - 1) * slotsPerStatus, state.ordersPage * slotsPerStatus)]));
+  const statusCounts = Object.fromEntries(Object.entries(ordersByStatus).map(([key, orders]) => [key, orders.length]));
 
   document.body.classList.add('orders-page');
   orderSummary.innerHTML = Object.entries(WORK_ORDER_STATUS).map(([key, label]) => `<article class="order-status-card ${key}"><span>${label}</span><strong>${statusCounts[key]}</strong></article>`).join('');
-  pageContent.innerHTML = `<section class="orders-list" aria-label="工单列表">${Object.entries(WORK_ORDER_STATUS).map(([key,label])=>`<div class="kanban-col"><h3><i class="${statusClass(key)}-dot"></i>${label}<span>${statusCounts[key]}</span></h3><div>${visibleOrders.filter(order=>order.status===key).map(databaseOrderCard).join('') || `<p class="empty-card">本页暂无工单</p>`}</div></div>`).join('')}</section>${orderPagination(totalPages)}`;
+  pageContent.innerHTML = `<section class="orders-list" aria-label="工单列表">${Object.entries(WORK_ORDER_STATUS).map(([key,label])=>`<div class="kanban-col"><h3><i class="${statusClass(key)}-dot"></i>${label}<span>${statusCounts[key]}</span></h3><div class="order-slots">${visibleOrders[key].map(databaseOrderCard).join('')}${Array.from({ length: slotsPerStatus - visibleOrders[key].length }, () => '<div class="order-card-slot" aria-hidden="true"></div>').join('')}</div></div>`).join('')}</section>${orderPagination(totalPages)}`;
   pageContent.querySelectorAll('[data-order-review]').forEach(button => button.addEventListener('click', async () => {
     const isValid = Number(button.dataset.valid);
     const order = state.orders.find(item => item.id === button.dataset.orderReview);
