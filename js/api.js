@@ -69,13 +69,14 @@ export const api = {
     alert.status = action.status; return alert;
   },
   async getWorkOrders() {
-    const [events, finishMedia] = await Promise.all([request('/api/events'), request('/api/events/finish')]);
-    const finishByEventId = new Map((Array.isArray(finishMedia) ? finishMedia : []).map(item => [String(item.id), item]));
-    return (Array.isArray(events) ? events : []).map((event) => mapDatabaseEvent(event, finishByEventId.get(String(event.id))));
+    const events = await request('/api/events');
+    return (Array.isArray(events) ? events : []).map(mapDatabaseEvent);
   },
-  async reviewWorkOrder(id, isValid) {
+  async reviewWorkOrder(id, isValid, existingRemarks = '') {
     if (![0, 1].includes(Number(isValid))) throw new Error('审核结果必须为 0 或 1');
-    return requestForm('/api/events/update', { id: String(id), is_valid: String(isValid) });
+    const auditRemark = isValid === 0 ? '人工审核结果：无效' : '人工审核结果：有效';
+    const previousRemark = existingRemarks.replace(/^人工审核结果：(无效|有效)[；;]?\s*/, '');
+    return requestForm('/api/events/update', { id: String(id), remarks: [auditRemark, previousRemark].filter(Boolean).join('；') });
   },
   async createWorkOrder(payload) {
     if (!API_CONFIG.useMock) return request('/work-orders', { method:'POST', body:JSON.stringify(payload) });
@@ -103,8 +104,9 @@ function toNumberOrNull(value) {
   return Number.isFinite(number) ? number : null;
 }
 
-function mapDatabaseEvent(event, finishMedia) {
-  const isValid = event.is_valid === null || event.is_valid === undefined || event.is_valid === '' ? null : Number(event.is_valid);
+function mapDatabaseEvent(event) {
+  const remarks = event.remarks || '';
+  const reviewStatus = remarks.startsWith('人工审核结果：无效') ? 0 : (remarks.startsWith('人工审核结果：有效') ? 1 : null);
   const processStatus = event.process_status || '未处理';
   const status = processStatus === '已完成' ? 'completed' : (processStatus === '处理中' ? 'processing' : 'pending');
   return {
@@ -117,9 +119,9 @@ function mapDatabaseEvent(event, finishMedia) {
     finishAt: event.finish_time || '',
     location: event.longitude && event.latitude ? `${event.longitude}, ${event.latitude}` : '位置暂缺',
     licensePlate: event.license_plate || '未识别车牌',
-    remarks: event.remarks || '',
-    isValid: isValid === 0 || isValid === 1 ? isValid : null,
-    finishMediaUrl: safeMediaUrl(finishMedia?.media_url),
+    remarks,
+    reviewStatus,
+    evidenceUrl: safeMediaUrl(event.media_url),
   };
 }
 
