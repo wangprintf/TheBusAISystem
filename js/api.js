@@ -108,7 +108,9 @@ function mapDatabaseEvent(event) {
   const remarks = event.remarks || '';
   const reviewStatus = remarks.startsWith('人工审核结果：无效') ? 0 : (remarks.startsWith('人工审核结果：有效') ? 1 : null);
   const processStatus = event.process_status || '未处理';
-  const status = processStatus === '已完成' ? 'completed' : (processStatus === '处理中' ? 'processing' : 'pending');
+  const status = processStatus === '已完成'
+    ? (reviewStatus === null ? 'review' : 'completed')
+    : (processStatus === '处理中' ? 'processing' : 'pending');
   return {
     id: String(event.id),
     title: [event.event_type, event.detail_type].filter(Boolean).join(' · ') || `事件 ${event.id}`,
