@@ -1,0 +1,52 @@
+.tencent-map {
+  position: absolute;
+  inset: 0;
+  background: #eaf0e8;
+}
+
+.map-head,
+.map-legend {
+  z-index: 1;
+}
+
+.map-message {
+  height: 100%;
+  padding: 28px;
+  display: grid;
+  place-content: center;
+  gap: 9px;
+  text-align: center;
+  color: #526176;
+  background: linear-gradient(135deg, #edf5ff, #eaf3ec);
+}
+
+.map-message strong {
+  font-size: 18px;
+  color: #172e4c;
+}
+
+.map-message span {
+  max-width: 360px;
+  line-height: 1.65;
+}
+
+.map-message.warning {
+  background: linear-gradient(135deg, #fffaf0, #fff4df);
+}
+
+.map-message.error {
+  background: linear-gradient(135deg, #fff4f4, #ffe8e8);
+}
+
+.legend-route {
+  display: inline-block;
+  width: 20px;
+  margin: 0 6px 0 4px;
+  border-top: 4px solid var(--blue);
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.map-legend i {
+  margin-right: 5px;
+}

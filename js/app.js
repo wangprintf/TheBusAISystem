@@ -1,5 +1,6 @@
 import { api } from './api.js';
 import { ALERT_STATUS, WORK_ORDER_STATUS } from './types.js';
+import { createTencentMap } from './tencent-map.js';
 
 const navItems = [
   ['dashboard','▦','数据总览','运营中心'], ['orders','▤','工单中心','告警与闭环处置'],
@@ -24,6 +25,7 @@ const PROFILE_KEY = 'traffic-user-profile';
 let deviceRefreshTimer = null;
 let deviceRefreshInFlight = false;
 let lastDeviceRefresh = null;
+let activeMapController = null;
 
 function esc(value = '') { return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function badge(value, type = '') { return `<span class="badge ${type || value}">${esc(value)}</span>`; }
@@ -72,6 +74,7 @@ function renderNav() {
 }
 async function go(page) {
   if (page !== 'devices') stopDeviceAutoRefresh();
+  if (page !== 'map' && activeMapController) { activeMapController.destroy(); activeMapController = null; }
   state.page = page; setCriticalAlarm(false); document.body.classList.remove('orders-page','devices-page'); orderSummary.innerHTML = ''; const item = navItems.find(i => i[0] === page); title.textContent = item[2]; kicker.textContent = item[3]; renderNav();
   if (!canRenderFromCache(page)) pageContent.innerHTML = `<div class="loading">正在加载数据…</div>`;
   const renderers = { dashboard:renderDashboard, alerts:renderAlerts, orders:renderOrders, map:renderMap, devices:renderDevices, settings:renderSettings };
@@ -307,7 +310,22 @@ async function renderLegacyOrders() {
 }
 function orderCard(o) { const source = state.alerts.find(a => a.id === o.sourceAlertId); return `<article class="order-card ${source ? severityClass(source.severity) : ''}"><span>${o.id}</span>${source ? badge(source.severity, severityClass(source.severity)) : ''}<h4>${o.title}</h4><p>⌖ ${o.location}</p><footer><b>${o.assignee}</b><em>${o.dueAt}</em></footer></article>`; }
 
-async function renderMap() { await getAlertsData(); pageContent.innerHTML=`<section class="map-page"><div class="map-panel"><div class="map-grid"></div><div class="map-head"><b>城市巡检态势</b><span>${state.alerts.length} 个事件点位</span></div><div class="route-line"></div>${state.alerts.map((a,i)=>`<button class="map-pin ${a.severity==='高'?'danger':''}" style="left:${24+i*15}%;top:${32+(i%2)*26}%" data-alert="${a.id}">${i+1}</button>`).join('')}<div class="map-legend">● 高优先级　● 一般事件　━━ 公交巡检线路</div></div><aside class="map-side panel"><h2>巡检图层</h2><label class="switch-row">道路病害 <input type="checkbox" checked></label><label class="switch-row">道路设施 <input type="checkbox" checked></label><label class="switch-row">施工市容 <input type="checkbox" checked></label><label class="switch-row">车载设备 <input type="checkbox" checked></label><hr><h3>高优先级事件</h3>${alertRows(state.alerts.filter(x=>x.severity==='高'))}</aside></section>`; document.querySelectorAll('[data-alert]').forEach(x=>x.addEventListener('click',()=>openAlert(x.dataset.alert))); }
+async function renderMap() {
+  await getAlertsData();
+  activeMapController?.destroy();
+  pageContent.innerHTML = `<section class="map-page"><div class="map-panel"><div id="tencent-map" class="tencent-map" aria-label="腾讯地图"></div><div class="map-head"><b>城市巡检态势</b><span>${state.alerts.length} 个事件点位</span></div><div class="map-legend"><i class="red-dot"></i> 高优先级　<i class="amber-dot"></i> 一般事件　<span class="legend-route"></span> 公交巡检路线</div></div><aside class="map-side panel"><h2>巡检图层</h2><label class="switch-row">道路病害 <input type="checkbox" checked data-map-category="道路病害"></label><label class="switch-row">道路设施 <input type="checkbox" checked data-map-category="道路设施"></label><label class="switch-row">施工市容 <input type="checkbox" checked data-map-category="市容巡检"></label><label class="switch-row">车载设备 <input type="checkbox" checked data-map-category="车载设备"></label><hr><h3>高优先级事件</h3>${alertRows(state.alerts.filter(x => x.severity === '高'))}</aside></section>`;
+  activeMapController = await createTencentMap({
+    container: pageContent.querySelector('#tencent-map'),
+    alerts: state.alerts,
+    onAlertClick: openAlert,
+  });
+  const selectedCategories = () => new Set([...pageContent.querySelectorAll('[data-map-category]:checked')].map(input => input.dataset.mapCategory));
+  pageContent.querySelectorAll('[data-map-category]').forEach(input => input.addEventListener('change', () => activeMapController?.setVisibleCategories(selectedCategories())));
+  pageContent.querySelectorAll('[data-alert]').forEach(button => button.addEventListener('click', () => {
+    activeMapController?.focusAlert(button.dataset.alert);
+    openAlert(button.dataset.alert);
+  }));
+}
 
 async function renderDevices() { await refreshDevices(); startDeviceAutoRefresh(); }
 async function refreshDevices(force = false) {

@@ -4,3 +4,11 @@ export const API_CONFIG = {
   useMock: true,
   timeout: 10000,
 };
+
+// Tencent Maps GL JS API settings. The browser key must be restricted to the
+// domains where this dashboard is deployed.
+export const TENCENT_MAP_CONFIG = {
+  key: '',
+  center: { latitude: 30.261, longitude: 120.192 },
+  zoom: 13,
+};
