@@ -72,7 +72,7 @@ function renderNav() {
 }
 async function go(page) {
   if (page !== 'devices') stopDeviceAutoRefresh();
-  state.page = page; setCriticalAlarm(false); document.body.classList.remove('orders-page'); orderSummary.innerHTML = ''; const item = navItems.find(i => i[0] === page); title.textContent = item[2]; kicker.textContent = item[3]; renderNav();
+  state.page = page; setCriticalAlarm(false); document.body.classList.remove('orders-page','devices-page'); orderSummary.innerHTML = ''; const item = navItems.find(i => i[0] === page); title.textContent = item[2]; kicker.textContent = item[3]; renderNav();
   if (!canRenderFromCache(page)) pageContent.innerHTML = `<div class="loading">正在加载数据…</div>`;
   const renderers = { dashboard:renderDashboard, alerts:renderAlerts, orders:renderOrders, map:renderMap, devices:renderDevices, settings:renderSettings };
   try {
@@ -109,6 +109,7 @@ async function getOrdersData(force = false) { state.orders = await loadCached('o
 async function getDevicesData(force = false) { state.devices = await loadCached('devices', () => api.getDevices(), force); return state.devices; }
 async function loadCore() { [state.dashboard, state.alerts, state.orders, state.devices] = await Promise.all([getDashboardData(), getAlertsData(), getOrdersData().catch(() => []), getDevicesData().catch(() => [])]); }
 function metric(label, value, sub, tone) { return `<article class="metric-card"><div class="metric-label">${label}<span class="metric-icon ${tone}">●</span></div><strong>${value}</strong><small>${sub}</small></article>`; }
+function metricSimple(label, value, tone) { return `<article class="metric-card metric-card-simple"><div class="metric-label">${label}<span class="metric-icon ${tone}">●</span></div><strong>${value}</strong></article>`; }
 async function renderDashboard() {
   await loadCore(); const d = state.dashboard;
   pageContent.innerHTML = `<section class="metrics">${metric('今日告警',d.todayAlerts,'较昨日 +12.4%','blue')}${metric('有效告警率',`${d.validRate}%`,'目标 ≥ 90%','green')}${metric('待处理工单',d.pendingOrders,'其中 3 条高优先级','amber')}${metric('设备在线率',`${d.onlineRate}%`,'28 / 30 台在线','purple')}</section>
@@ -318,8 +319,8 @@ async function refreshDevices(force = false) {
     if (state.page !== 'devices') return;
     const online=state.devices.filter(d=>d.status==='正常').length;
     const attention=state.devices.filter(d=>d.status==='异常').length;
-    const refreshedAt = new Intl.DateTimeFormat('zh-CN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(lastDeviceRefresh);
-    pageContent.innerHTML=`<section class="metrics compact">${metric('接入设备',state.devices.length,'来自车辆设备数据库','blue')}${metric('当前在线',online,'状态正常的设备','green')}${metric('需关注',attention,'存在异常的设备','amber')}</section><section class="panel table-panel"><div class="panel-head"><div><h2>车载设备</h2><p>每 5 秒自动同步 · 上次刷新 ${refreshedAt}</p></div><button class="outline-btn">导出运维记录</button></div><table><thead><tr><th>设备编号</th><th>车辆牌照</th><th>异常信息</th><th>存储</th><th>温度</th><th>状态</th></tr></thead><tbody>${state.devices.map(d=>`<tr><td><b>${d.id || '--'}</b></td><td><b>${d.name || '--'}</b></td><td>${d.abnormalInfo || '--'}</td><td>${d.storage == null ? '--' : `<div class="progress"><i style="width:${d.storage}%"></i></div>${d.storage}%`}</td><td>${d.temperature == null ? '--' : d.temperature+'°C'}</td><td>${badge(d.status || '--',d.status==='正常'?'green':d.status==='异常'?'amber':'gray')}</td></tr>`).join('')}</tbody></table></section>`;
+    document.body.classList.add('devices-page');
+    pageContent.innerHTML=`<section class="metrics compact">${metricSimple('接入设备',state.devices.length,'blue')}${metricSimple('当前在线',online,'green')}${metricSimple('需关注',attention,'amber')}</section><section class="panel table-panel"><div class="panel-head"><div><h2>车载设备</h2></div><button class="outline-btn">导出运维记录</button></div><table><thead><tr><th>设备编号</th><th>车辆牌照</th><th>异常信息</th><th>存储</th><th>温度</th><th>状态</th></tr></thead><tbody>${state.devices.map(d=>`<tr><td><b>${d.id || '--'}</b></td><td><b>${d.name || '--'}</b></td><td>${d.abnormalInfo || '--'}</td><td>${d.storage == null ? '--' : `<div class="progress"><i style="width:${d.storage}%"></i></div>${d.storage}%`}</td><td>${d.temperature == null ? '--' : d.temperature+'°C'}</td><td>${badge(d.status || '--',d.status==='正常'?'green':d.status==='异常'?'amber':'gray')}</td></tr>`).join('')}</tbody></table></section>`;
   } finally { deviceRefreshInFlight = false; }
 }
 
