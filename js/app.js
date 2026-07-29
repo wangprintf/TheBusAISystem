@@ -3,15 +3,14 @@ import { ALERT_STATUS, WORK_ORDER_STATUS } from './types.js';
 
 const navItems = [
   ['dashboard','▦','数据总览','运营中心'], ['orders','▤','工单中心','告警与闭环处置'],
-  ['alerts','◌','告警信息','实时告警'], ['map','⌖','地图巡检','空间态势'], ['devices','▣','设备运维','车载设备'], ['settings','⚙','系统配置','规则与权限'],
+  ['map','⌖','地图巡检','空间态势'], ['devices','▣','设备运维','车载设备'], ['settings','⚙','系统配置','规则与权限'],
 ];
-const state = { page:'dashboard', alerts:[], devices:[], orders:[], dashboard:null, orderPages:{ pending:1, processing:1, review:1, completed:1 }, orderFilters:{ pending:{ time:'', priority:'', editingTime:false }, processing:{ time:'', priority:'', editingTime:false }, review:{ time:'', priority:'', editingTime:false }, completed:{ time:'', priority:'', editingTime:false } } };
+const state = { page:'dashboard', alerts:[], devices:[], orders:[], dashboard:null, orderPages:{ pending:1, processing:1, review:1, completed:1 }, orderFilters:{ pending:{ time:'', priority:'' }, processing:{ time:'', priority:'' }, review:{ time:'', priority:'' }, completed:{ time:'', priority:'' } } };
 const pageContent = document.querySelector('#page-content');
 const nav = document.querySelector('#main-nav');
 const title = document.querySelector('#page-title');
 const kicker = document.querySelector('#page-kicker');
 const dateButton = document.querySelector('#date-button');
-const notificationButton = document.querySelector('#notification-button');
 const profileButton = document.querySelector('#profile-button');
 const profileRoot = document.querySelector('#profile-root');
 const orderSummary = document.querySelector('#order-summary');
@@ -119,7 +118,7 @@ async function renderOrders() {
 
   document.body.classList.add('orders-page');
   orderSummary.innerHTML = Object.entries(WORK_ORDER_STATUS).map(([key, label]) => `<article class="order-status-card ${key}"><span>${label}</span><strong>${statusCounts[key]}</strong></article>`).join('');
-  pageContent.innerHTML = `<section class="orders-list" aria-label="工单列表">${Object.entries(WORK_ORDER_STATUS).map(([key,label])=>`<div class="kanban-col"><h3><i class="${statusClass(key)}-dot"></i>${label}${orderFiltersBar(key)}<span>${statusCounts[key]}</span></h3><div class="order-slots">${visibleOrders[key].map(databaseOrderCard).join('')}${Array.from({ length: slotsPerStatus - visibleOrders[key].length }, () => '<div class="order-card-slot" aria-hidden="true"></div>').join('')}</div>${orderColumnPagination(key, totalPages[key])}</div>`).join('')}</section>`;
+  pageContent.innerHTML = `<section class="orders-list" aria-label="工单列表">${Object.entries(WORK_ORDER_STATUS).map(([key,label])=>`<div class="kanban-col"><h3><i class="${statusClass(key)}-dot"></i>${label}<span>${statusCounts[key]}</span></h3>${orderFiltersBar(key)}<div class="order-slots">${visibleOrders[key].map(databaseOrderCard).join('')}${Array.from({ length: slotsPerStatus - visibleOrders[key].length }, () => '<div class="order-card-slot" aria-hidden="true"></div>').join('')}</div>${orderColumnPagination(key, totalPages[key])}</div>`).join('')}</section>`;
   pageContent.querySelectorAll('[data-order-review]').forEach(button => button.addEventListener('click', async () => {
     const isValid = Number(button.dataset.valid);
     const order = state.orders.find(item => item.id === button.dataset.orderReview);
@@ -133,6 +132,25 @@ async function renderOrders() {
       showToast(error.message || '审核结果写入失败');
     }
   }));
+  pageContent.querySelectorAll('[data-order-send]').forEach(button => button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      await api.sendWorkOrder(button.dataset.orderSend);
+      showToast('工单已发送，等待处理');
+      await renderOrders();
+    } catch (error) {
+      button.disabled = false;
+      showToast(error.message || '工单发送失败');
+    }
+  }));
+  pageContent.querySelectorAll('[data-order-detail]').forEach(card => {
+    const openDetail = event => {
+      if (event.target.closest('button, select, input, label')) return;
+      openOrderDetail(card.dataset.orderDetail);
+    };
+    card.addEventListener('click', openDetail);
+    card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openDetail(event); } });
+  });
   pageContent.querySelectorAll('[data-order-page]').forEach(button => button.addEventListener('click', () => {
     const key = button.dataset.orderPage;
     state.orderPages[key] += button.dataset.orderDirection === 'prev' ? -1 : 1;
@@ -144,17 +162,17 @@ async function renderOrders() {
     state.orderPages[key] = Number(form.querySelector('[data-order-page-input]').value);
     renderOrders();
   }));
-  pageContent.querySelectorAll('[data-order-time-toggle]').forEach(button => button.addEventListener('click', () => {
-    state.orderFilters[button.dataset.orderTimeToggle].editingTime = true;
-    renderOrders();
-  }));
-  pageContent.querySelectorAll('[data-order-time-jump]').forEach(form => form.addEventListener('submit', event => {
-    event.preventDefault();
-    const key = form.dataset.orderTimeJump;
-    state.orderFilters[key].time = form.querySelector('[data-order-time-input]').value;
-    state.orderFilters[key].editingTime = false;
+  pageContent.querySelectorAll('[data-order-time-input]').forEach(input => input.addEventListener('change', () => {
+    const key = input.dataset.orderTimeInput;
+    state.orderFilters[key].time = input.value;
     state.orderPages[key] = 1;
     renderOrders();
+  }));
+  pageContent.querySelectorAll('[data-order-time-trigger]').forEach(button => button.addEventListener('click', () => {
+    const input = pageContent.querySelector(`[data-order-time-input="${button.dataset.orderTimeTrigger}"]`);
+    if (!input) return;
+    if (typeof input.showPicker === 'function') input.showPicker();
+    else { input.focus(); input.click(); }
   }));
   pageContent.querySelectorAll('[data-order-priority]').forEach(select => select.addEventListener('change', () => {
     const key = select.dataset.orderPriority;
@@ -175,10 +193,8 @@ function priorityWeight(priority) { return { '最高':4, '高':3, '中':2, '低'
 
 function orderFiltersBar(key) {
   const filters = state.orderFilters[key];
-  const timeControl = filters.editingTime
-    ? `<form class="time-filter" data-order-time-jump="${key}"><input data-order-time-input type="datetime-local" value="${esc(filters.time)}" aria-label="${WORK_ORDER_STATUS[key]}时间" /><button class="filter-jump" type="submit" title="按时间跳转">↵</button></form>`
-    : `<button class="filter-chip" type="button" data-order-time-toggle="${key}">时间</button>`;
-  return `<div class="column-filters">${timeControl}<select data-order-priority="${key}" aria-label="${WORK_ORDER_STATUS[key]}优先级"><option value="">优先级</option><option value="最高" ${filters.priority === '最高' ? 'selected' : ''}>最高</option><option value="高" ${filters.priority === '高' ? 'selected' : ''}>高</option><option value="中" ${filters.priority === '中' ? 'selected' : ''}>中</option><option value="低" ${filters.priority === '低' ? 'selected' : ''}>低</option></select></div>`;
+  const timeLabel = filters.time ? filters.time.replaceAll('-', '/') : '时间';
+  return `<div class="column-filters"><div class="time-filter"><button type="button" data-order-time-trigger="${key}">${timeLabel}</button><input data-order-time-input="${key}" type="date" value="${esc(filters.time)}" aria-label="${WORK_ORDER_STATUS[key]}日期" /></div><select data-order-priority="${key}" aria-label="${WORK_ORDER_STATUS[key]}优先级"><option value="">优先级</option><option value="最高" ${filters.priority === '最高' ? 'selected' : ''}>最高</option><option value="高" ${filters.priority === '高' ? 'selected' : ''}>高</option><option value="中" ${filters.priority === '中' ? 'selected' : ''}>中</option><option value="低" ${filters.priority === '低' ? 'selected' : ''}>低</option></select></div>`;
 }
 
 function orderColumnPagination(key, totalPages) {
@@ -191,7 +207,57 @@ function orderColumnPagination(key, totalPages) {
 function databaseOrderCard(order) {
   const review = order.reviewStatus === 1 ? badge('人工审核：有效','green') : order.reviewStatus === 0 ? badge('人工审核：无效','gray') : badge('待人工审核','amber');
   const evidence = order.evidenceUrl ? `<figure class="order-evidence"><img src="${esc(order.evidenceUrl)}" alt="工单 ${esc(order.id)} 的事件取证图片" loading="lazy" /></figure>` : `<div class="order-evidence-empty">暂无事件取证图片</div>`;
-  return `<article class="order-card database-order-card"><span>事件 #${esc(order.id)} · ${WORK_ORDER_STATUS[order.status] || esc(order.processStatus)}</span><div class="order-card-badges">${badge(order.priority, severityClass(order.priority))}${review}</div><h4>${esc(order.title)}</h4>${evidence}<p>车牌：${esc(order.licensePlate)}<br>位置：${esc(order.location)}</p>${order.remarks ? `<p class="order-remarks">备注：${esc(order.remarks)}</p>` : ''}<footer><b>${esc(order.occurredAt)}</b><em>${order.finishAt ? `完成 ${esc(order.finishAt)}` : '等待处置'}</em></footer><div class="review-actions"><button class="outline-btn" type="button" data-order-review="${esc(order.id)}" data-valid="0">判定无效</button><button class="primary-btn" type="button" data-order-review="${esc(order.id)}" data-valid="1">确认有效</button></div></article>`;
+  const actions = order.status === 'pending'
+    ? `<div class="review-actions"><button class="outline-btn" type="button" data-order-review="${esc(order.id)}" data-valid="0">判定无效</button><button class="primary-btn" type="button" data-order-send="${esc(order.id)}">发送工单</button></div>`
+    : order.status === 'review'
+      ? `<div class="review-actions"><button class="outline-btn" type="button" data-order-review="${esc(order.id)}" data-valid="0">不合格</button><button class="primary-btn" type="button" data-order-review="${esc(order.id)}" data-valid="1">合格</button></div>`
+      : '';
+  return `<article class="order-card database-order-card" data-order-detail="${esc(order.id)}" role="button" tabindex="0" aria-label="查看事件 ${esc(order.id)} 详情"><span>事件 #${esc(order.id)} · ${WORK_ORDER_STATUS[order.status] || esc(order.processStatus)}</span><div class="order-card-badges">${badge(order.priority, severityClass(order.priority))}${review}</div><h4>${esc(order.title)}</h4>${evidence}<p>车牌：${esc(order.licensePlate)}<br>位置：${esc(order.location)}</p>${order.remarks ? `<p class="order-remarks">备注：${esc(order.remarks)}</p>` : ''}<footer><b>${esc(order.occurredAt)}</b><em>${order.finishAt ? `完成 ${esc(order.finishAt)}` : '等待处置'}</em></footer>${actions}</article>`;
+}
+
+function openOrderDetail(id) {
+  const order = state.orders.find(item => item.id === id);
+  if (!order) return;
+  const mediaPage = { alarm:0, processed:0 };
+  const root = document.querySelector('#drawer-root');
+  const close = () => { root.innerHTML = ''; };
+  const render = () => {
+    const reviewLabel = order.reviewStatus === 1 ? '合格' : order.reviewStatus === 0 ? '不合格' : '待审核';
+    const actions = order.status === 'pending'
+      ? `<button class="primary-btn" type="button" data-detail-send="${esc(order.id)}">发送工单</button>`
+      : order.status === 'review'
+        ? `<button class="outline-btn" type="button" data-detail-review="${esc(order.id)}" data-valid="0">不合格</button><button class="primary-btn" type="button" data-detail-review="${esc(order.id)}" data-valid="1">合格</button>`
+        : '';
+    root.innerHTML = `<div class="order-detail-scrim" data-detail-close></div><section class="order-detail-dialog" role="dialog" aria-modal="true" aria-label="工单详情"><header class="order-detail-head"><div><p>工单详情 · 事件 #${esc(order.id)}</p><h2>${esc(order.title)}</h2></div><button class="order-detail-close" type="button" aria-label="关闭详情" data-detail-close>×</button></header><div class="order-detail-summary"><div><small>上报时间</small><b>${esc(order.occurredAt)}</b></div><div><small>事件类型</small><b>${esc(order.eventType || order.title)}</b></div><div><small>优先级</small>${badge(order.priority, severityClass(order.priority))}</div><div><small>审核结果</small>${badge(reviewLabel, order.reviewStatus === 1 ? 'green' : order.reviewStatus === 0 ? 'gray' : 'amber')}</div><div><small>处置状态</small><b>${esc(WORK_ORDER_STATUS[order.status] || order.processStatus)}</b></div></div><div class="order-detail-media">${detailMediaPanel('报警材料', 'alarm', order.alertMedia, mediaPage.alarm)}${detailMediaPanel('处理后材料', 'processed', order.processedMedia, mediaPage.processed)}</div><section class="order-detail-notes"><div><h3>事件信息</h3><p>车牌：${esc(order.licensePlate)}　位置：${esc(order.location)}</p></div><div><h3>备注</h3><p>${esc(order.remarks || '暂无备注')}</p></div></section><footer class="order-detail-actions">${actions}</footer></section>`;
+    root.querySelectorAll('[data-detail-close]').forEach(button => button.addEventListener('click', close));
+    root.querySelectorAll('[data-media-step]').forEach(button => button.addEventListener('click', () => {
+      const section = button.dataset.mediaSection;
+      const items = section === 'alarm' ? order.alertMedia : order.processedMedia;
+      mediaPage[section] = (mediaPage[section] + Number(button.dataset.mediaStep) + items.length) % items.length;
+      render();
+    }));
+    root.querySelectorAll('[data-detail-send]').forEach(button => button.addEventListener('click', async () => {
+      button.disabled = true;
+      try { await api.sendWorkOrder(order.id); showToast('工单已发送，等待处理'); close(); await renderOrders(); }
+      catch (error) { button.disabled = false; showToast(error.message || '工单发送失败'); }
+    }));
+    root.querySelectorAll('[data-detail-review]').forEach(button => button.addEventListener('click', async () => {
+      button.disabled = true;
+      try { await api.reviewWorkOrder(order.id, Number(button.dataset.valid), order.remarks); showToast(Number(button.dataset.valid) ? '已判定合格' : '已判定不合格'); close(); await renderOrders(); }
+      catch (error) { button.disabled = false; showToast(error.message || '审核结果写入失败'); }
+    }));
+  };
+  render();
+}
+
+function detailMediaPanel(title, section, items, page) {
+  if (!items.length) return `<section class="media-panel"><div class="media-panel-head"><h3>${title}</h3><span>暂无材料</span></div><div class="media-empty">暂无可展示的图片或视频</div></section>`;
+  const item = items[page];
+  const media = item.kind === 'video'
+    ? `<video controls preload="metadata" src="${esc(item.url)}">当前浏览器不支持视频播放。</video>`
+    : `<img src="${esc(item.url)}" alt="${title} ${page + 1}" />`;
+  const controls = items.length > 1 ? `<div class="media-pager"><button type="button" data-media-step="-1" data-media-section="${section}" aria-label="上一份材料">‹</button><span>${page + 1} / ${items.length} · ${item.kind === 'video' ? '视频' : '图片'}</span><button type="button" data-media-step="1" data-media-section="${section}" aria-label="下一份材料">›</button></div>` : `<div class="media-pager single">1 / 1 · ${item.kind === 'video' ? '视频' : '图片'}</div>`;
+  return `<section class="media-panel"><div class="media-panel-head"><h3>${title}</h3><span>${item.kind === 'video' ? '视频' : '图片'}</span></div><div class="media-stage">${media}</div>${controls}</section>`;
 }
 
 async function renderLegacyOrders() {
@@ -230,7 +296,6 @@ async function renderSettings() { pageContent.innerHTML=`<section class="setting
 applyProfile();
 updateClock();
 setInterval(updateClock, 1000);
-notificationButton.addEventListener('click', () => go('alerts'));
 profileButton.addEventListener('click', openProfile);
 
 await go('dashboard');

@@ -69,14 +69,21 @@ export const api = {
     alert.status = action.status; return alert;
   },
   async getWorkOrders() {
-    const events = await request('/api/events');
-    return (Array.isArray(events) ? events : []).map(mapDatabaseEvent);
+    const [events, finishMedia] = await Promise.all([
+      request('/api/events'),
+      request('/api/events/finish').catch(() => []),
+    ]);
+    const finishMediaByEventId = new Map((Array.isArray(finishMedia) ? finishMedia : []).map(item => [String(item.id), item]));
+    return (Array.isArray(events) ? events : []).map(event => mapDatabaseEvent(event, finishMediaByEventId.get(String(event.id))));
   },
   async reviewWorkOrder(id, isValid, existingRemarks = '') {
     if (![0, 1].includes(Number(isValid))) throw new Error('审核结果必须为 0 或 1');
     const auditRemark = isValid === 0 ? '人工审核结果：无效' : '人工审核结果：有效';
     const previousRemark = existingRemarks.replace(/^人工审核结果：(无效|有效)[；;]?\s*/, '');
     return requestForm('/api/events/update', { id: String(id), remarks: [auditRemark, previousRemark].filter(Boolean).join('；') });
+  },
+  async sendWorkOrder(id) {
+    return requestForm('/api/events/update', { id: String(id), process_status:'处理中' });
   },
   async createWorkOrder(payload) {
     if (!API_CONFIG.useMock) return request('/work-orders', { method:'POST', body:JSON.stringify(payload) });
@@ -104,16 +111,19 @@ function toNumberOrNull(value) {
   return Number.isFinite(number) ? number : null;
 }
 
-function mapDatabaseEvent(event) {
+function mapDatabaseEvent(event, finishMedia = {}) {
   const remarks = event.remarks || '';
   const reviewStatus = remarks.startsWith('人工审核结果：无效') ? 0 : (remarks.startsWith('人工审核结果：有效') ? 1 : null);
   const processStatus = event.process_status || '未处理';
   const status = processStatus === '已完成'
     ? (reviewStatus === null ? 'review' : 'completed')
     : (processStatus === '处理中' ? 'processing' : 'pending');
+  const alertMedia = parseMediaUrls(event.media_url);
+  const processedMedia = parseMediaUrls(finishMedia.media_url || event.finish_media_url || event.processed_media_url || event.after_media_url || event.handle_media_url || event.media_url_finish || '');
   return {
     id: String(event.id),
     title: [event.event_type, event.detail_type].filter(Boolean).join(' · ') || `事件 ${event.id}`,
+    eventType: event.event_type || event.detail_type || '',
     status,
     processStatus,
     priority: event.priority_level || '普通',
@@ -123,11 +133,13 @@ function mapDatabaseEvent(event) {
     licensePlate: event.license_plate || '未识别车牌',
     remarks,
     reviewStatus,
-    evidenceUrl: safeMediaUrl(event.media_url),
+    alertMedia,
+    processedMedia,
+    evidenceUrl: alertMedia.find(item => item.kind === 'image')?.url || '',
   };
 }
 
-function safeMediaUrl(value) {
-  if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return '';
-  return value;
+function parseMediaUrls(value) {
+  const entries = Array.isArray(value) ? value : String(value || '').split(/[;\n\r]+/);
+  return entries.map(item => String(item).trim()).filter(item => /^https?:\/\//i.test(item)).map(url => ({ url, kind: /\.(mp4|webm|mov|m4v|ogg)(?:[?#]|$)/i.test(url) ? 'video' : 'image' })).sort((a, b) => a.kind === b.kind ? 0 : a.kind === 'image' ? -1 : 1);
 }
