@@ -5,7 +5,7 @@ const navItems = [
   ['dashboard','▦','数据总览','运营中心'], ['orders','▤','工单中心','告警与闭环处置'],
   ['alerts','◌','告警信息','实时告警'], ['map','⌖','地图巡检','空间态势'], ['devices','▣','设备运维','车载设备'], ['settings','⚙','系统配置','规则与权限'],
 ];
-const state = { page:'dashboard', alerts:[], devices:[], orders:[], dashboard:null, ordersPage:1 };
+const state = { page:'dashboard', alerts:[], devices:[], orders:[], dashboard:null, orderPages:{ pending:1, processing:1, review:1, completed:1 } };
 const pageContent = document.querySelector('#page-content');
 const nav = document.querySelector('#main-nav');
 const title = document.querySelector('#page-title');
@@ -107,18 +107,18 @@ async function openAlert(id) {
   document.querySelector('#create-order').addEventListener('click',async()=>{ await api.createWorkOrder({title:`处置${alert.location}${alert.type}`,sourceAlertId:alert.id,location:alert.location}); await api.updateAlert(id,{status:'dispatched'}); showToast('工单已创建，等待指派'); close(); go('orders'); });
 }
 
-async function renderOrders(page = state.ordersPage) {
+async function renderOrders() {
   state.orders = await api.getWorkOrders();
   const slotsPerStatus = 2;
   const ordersByStatus = Object.fromEntries(Object.keys(WORK_ORDER_STATUS).map(key => [key, state.orders.filter(order => order.status === key)]));
-  const totalPages = Math.max(1, ...Object.values(ordersByStatus).map(orders => Math.ceil(orders.length / slotsPerStatus)));
-  state.ordersPage = Math.min(Math.max(1, Number(page) || 1), totalPages);
-  const visibleOrders = Object.fromEntries(Object.entries(ordersByStatus).map(([key, orders]) => [key, orders.slice((state.ordersPage - 1) * slotsPerStatus, state.ordersPage * slotsPerStatus)]));
+  const totalPages = Object.fromEntries(Object.entries(ordersByStatus).map(([key, orders]) => [key, Math.max(1, Math.ceil(orders.length / slotsPerStatus))]));
+  Object.keys(WORK_ORDER_STATUS).forEach(key => { state.orderPages[key] = Math.min(Math.max(1, Number(state.orderPages[key]) || 1), totalPages[key]); });
+  const visibleOrders = Object.fromEntries(Object.entries(ordersByStatus).map(([key, orders]) => [key, orders.slice((state.orderPages[key] - 1) * slotsPerStatus, state.orderPages[key] * slotsPerStatus)]));
   const statusCounts = Object.fromEntries(Object.entries(ordersByStatus).map(([key, orders]) => [key, orders.length]));
 
   document.body.classList.add('orders-page');
   orderSummary.innerHTML = Object.entries(WORK_ORDER_STATUS).map(([key, label]) => `<article class="order-status-card ${key}"><span>${label}</span><strong>${statusCounts[key]}</strong></article>`).join('');
-  pageContent.innerHTML = `<section class="orders-list" aria-label="工单列表">${Object.entries(WORK_ORDER_STATUS).map(([key,label])=>`<div class="kanban-col"><h3><i class="${statusClass(key)}-dot"></i>${label}<span>${statusCounts[key]}</span></h3><div class="order-slots">${visibleOrders[key].map(databaseOrderCard).join('')}${Array.from({ length: slotsPerStatus - visibleOrders[key].length }, () => '<div class="order-card-slot" aria-hidden="true"></div>').join('')}</div></div>`).join('')}</section>${orderPagination(totalPages)}`;
+  pageContent.innerHTML = `<section class="orders-list" aria-label="工单列表">${Object.entries(WORK_ORDER_STATUS).map(([key,label])=>`<div class="kanban-col"><h3><i class="${statusClass(key)}-dot"></i>${label}<span>${statusCounts[key]}</span></h3><div class="order-slots">${visibleOrders[key].map(databaseOrderCard).join('')}${Array.from({ length: slotsPerStatus - visibleOrders[key].length }, () => '<div class="order-card-slot" aria-hidden="true"></div>').join('')}</div>${orderColumnPagination(key, totalPages[key])}</div>`).join('')}</section>`;
   pageContent.querySelectorAll('[data-order-review]').forEach(button => button.addEventListener('click', async () => {
     const isValid = Number(button.dataset.valid);
     const order = state.orders.find(item => item.id === button.dataset.orderReview);
@@ -126,24 +126,30 @@ async function renderOrders(page = state.ordersPage) {
     try {
       await api.reviewWorkOrder(button.dataset.orderReview, isValid, order?.remarks);
       showToast(isValid === 0 ? '已标记无效，审核备注已写入数据库' : '已确认有效，审核备注已写入数据库');
-      await renderOrders(state.ordersPage);
+      await renderOrders();
     } catch (error) {
       button.disabled = false;
       showToast(error.message || '审核结果写入失败');
     }
   }));
-  pageContent.querySelector('[data-orders-page="prev"]').addEventListener('click', () => renderOrders(state.ordersPage - 1));
-  pageContent.querySelector('[data-orders-page="next"]').addEventListener('click', () => renderOrders(state.ordersPage + 1));
-  pageContent.querySelector('#orders-page-jump').addEventListener('submit', event => {
+  pageContent.querySelectorAll('[data-order-page]').forEach(button => button.addEventListener('click', () => {
+    const key = button.dataset.orderPage;
+    state.orderPages[key] += button.dataset.orderDirection === 'prev' ? -1 : 1;
+    renderOrders();
+  }));
+  pageContent.querySelectorAll('[data-order-page-jump]').forEach(form => form.addEventListener('submit', event => {
     event.preventDefault();
-    renderOrders(Number(pageContent.querySelector('#orders-page-input').value));
-  });
+    const key = form.dataset.orderPageJump;
+    state.orderPages[key] = Number(form.querySelector('[data-order-page-input]').value);
+    renderOrders();
+  }));
 }
 
-function orderPagination(totalPages) {
-  const previousDisabled = state.ordersPage === 1 ? 'disabled' : '';
-  const nextDisabled = state.ordersPage === totalPages ? 'disabled' : '';
-  return `<nav class="order-pagination" aria-label="工单分页"><button class="outline-btn" type="button" data-orders-page="prev" ${previousDisabled}>上一页</button><span>第 <b>${state.ordersPage}</b> / ${totalPages} 页，共 ${state.orders.length} 条</span><button class="outline-btn" type="button" data-orders-page="next" ${nextDisabled}>下一页</button><form id="orders-page-jump"><label>跳至 <input id="orders-page-input" type="number" min="1" max="${totalPages}" value="${state.ordersPage}" aria-label="页码" /> 页</label><button class="primary-btn" type="submit">跳转</button></form></nav>`;
+function orderColumnPagination(key, totalPages) {
+  const currentPage = state.orderPages[key];
+  const previousDisabled = currentPage === 1 ? 'disabled' : '';
+  const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+  return `<nav class="column-pagination" aria-label="${WORK_ORDER_STATUS[key]}分页"><button class="outline-btn" type="button" data-order-page="${key}" data-order-direction="prev" ${previousDisabled}>上一页</button><span><b>${currentPage}</b> / ${totalPages}</span><button class="outline-btn" type="button" data-order-page="${key}" data-order-direction="next" ${nextDisabled}>下一页</button><form data-order-page-jump="${key}"><label>跳至 <input data-order-page-input type="number" min="1" max="${totalPages}" value="${currentPage}" aria-label="${WORK_ORDER_STATUS[key]}页码" /> 页</label><button class="primary-btn" type="submit">跳转</button></form></nav>`;
 }
 
 function databaseOrderCard(order) {
