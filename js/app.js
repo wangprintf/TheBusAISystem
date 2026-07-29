@@ -5,7 +5,7 @@ const navItems = [
   ['dashboard','▦','数据总览','运营中心'], ['orders','▤','工单中心','告警与闭环处置'],
   ['alerts','◌','告警信息','实时告警'], ['map','⌖','地图巡检','空间态势'], ['devices','▣','设备运维','车载设备'], ['settings','⚙','系统配置','规则与权限'],
 ];
-const state = { page:'dashboard', alerts:[], devices:[], orders:[], dashboard:null, orderPages:{ pending:1, processing:1, review:1, completed:1 } };
+const state = { page:'dashboard', alerts:[], devices:[], orders:[], dashboard:null, orderPages:{ pending:1, processing:1, review:1, completed:1 }, orderFilters:{ pending:{ time:'', priority:'', editingTime:false }, processing:{ time:'', priority:'', editingTime:false }, review:{ time:'', priority:'', editingTime:false }, completed:{ time:'', priority:'', editingTime:false } } };
 const pageContent = document.querySelector('#page-content');
 const nav = document.querySelector('#main-nav');
 const title = document.querySelector('#page-title');
@@ -111,14 +111,15 @@ async function renderOrders() {
   state.orders = await api.getWorkOrders();
   const slotsPerStatus = 2;
   const ordersByStatus = Object.fromEntries(Object.keys(WORK_ORDER_STATUS).map(key => [key, state.orders.filter(order => order.status === key)]));
-  const totalPages = Object.fromEntries(Object.entries(ordersByStatus).map(([key, orders]) => [key, Math.max(1, Math.ceil(orders.length / slotsPerStatus))]));
+  const filteredOrdersByStatus = Object.fromEntries(Object.entries(ordersByStatus).map(([key, orders]) => [key, filterOrders(orders, state.orderFilters[key]) ]));
+  const totalPages = Object.fromEntries(Object.entries(filteredOrdersByStatus).map(([key, orders]) => [key, Math.max(1, Math.ceil(orders.length / slotsPerStatus))]));
   Object.keys(WORK_ORDER_STATUS).forEach(key => { state.orderPages[key] = Math.min(Math.max(1, Number(state.orderPages[key]) || 1), totalPages[key]); });
-  const visibleOrders = Object.fromEntries(Object.entries(ordersByStatus).map(([key, orders]) => [key, orders.slice((state.orderPages[key] - 1) * slotsPerStatus, state.orderPages[key] * slotsPerStatus)]));
+  const visibleOrders = Object.fromEntries(Object.entries(filteredOrdersByStatus).map(([key, orders]) => [key, orders.slice((state.orderPages[key] - 1) * slotsPerStatus, state.orderPages[key] * slotsPerStatus)]));
   const statusCounts = Object.fromEntries(Object.entries(ordersByStatus).map(([key, orders]) => [key, orders.length]));
 
   document.body.classList.add('orders-page');
   orderSummary.innerHTML = Object.entries(WORK_ORDER_STATUS).map(([key, label]) => `<article class="order-status-card ${key}"><span>${label}</span><strong>${statusCounts[key]}</strong></article>`).join('');
-  pageContent.innerHTML = `<section class="orders-list" aria-label="工单列表">${Object.entries(WORK_ORDER_STATUS).map(([key,label])=>`<div class="kanban-col"><h3><i class="${statusClass(key)}-dot"></i>${label}<span>${statusCounts[key]}</span></h3><div class="order-slots">${visibleOrders[key].map(databaseOrderCard).join('')}${Array.from({ length: slotsPerStatus - visibleOrders[key].length }, () => '<div class="order-card-slot" aria-hidden="true"></div>').join('')}</div>${orderColumnPagination(key, totalPages[key])}</div>`).join('')}</section>`;
+  pageContent.innerHTML = `<section class="orders-list" aria-label="工单列表">${Object.entries(WORK_ORDER_STATUS).map(([key,label])=>`<div class="kanban-col"><h3><i class="${statusClass(key)}-dot"></i>${label}${orderFiltersBar(key)}<span>${statusCounts[key]}</span></h3><div class="order-slots">${visibleOrders[key].map(databaseOrderCard).join('')}${Array.from({ length: slotsPerStatus - visibleOrders[key].length }, () => '<div class="order-card-slot" aria-hidden="true"></div>').join('')}</div>${orderColumnPagination(key, totalPages[key])}</div>`).join('')}</section>`;
   pageContent.querySelectorAll('[data-order-review]').forEach(button => button.addEventListener('click', async () => {
     const isValid = Number(button.dataset.valid);
     const order = state.orders.find(item => item.id === button.dataset.orderReview);
@@ -143,6 +144,41 @@ async function renderOrders() {
     state.orderPages[key] = Number(form.querySelector('[data-order-page-input]').value);
     renderOrders();
   }));
+  pageContent.querySelectorAll('[data-order-time-toggle]').forEach(button => button.addEventListener('click', () => {
+    state.orderFilters[button.dataset.orderTimeToggle].editingTime = true;
+    renderOrders();
+  }));
+  pageContent.querySelectorAll('[data-order-time-jump]').forEach(form => form.addEventListener('submit', event => {
+    event.preventDefault();
+    const key = form.dataset.orderTimeJump;
+    state.orderFilters[key].time = form.querySelector('[data-order-time-input]').value;
+    state.orderFilters[key].editingTime = false;
+    state.orderPages[key] = 1;
+    renderOrders();
+  }));
+  pageContent.querySelectorAll('[data-order-priority]').forEach(select => select.addEventListener('change', () => {
+    const key = select.dataset.orderPriority;
+    state.orderFilters[key].priority = select.value;
+    state.orderPages[key] = 1;
+    renderOrders();
+  }));
+}
+
+function filterOrders(orders, filters) {
+  return orders.filter(order => {
+    const orderTime = String(order.occurredAt || '').replace(' ', 'T').slice(0, 16);
+    return (!filters.time || orderTime.startsWith(filters.time)) && (!filters.priority || order.priority === filters.priority);
+  }).sort((a, b) => priorityWeight(b.priority) - priorityWeight(a.priority));
+}
+
+function priorityWeight(priority) { return { '最高':4, '高':3, '中':2, '低':1 }[priority] || 0; }
+
+function orderFiltersBar(key) {
+  const filters = state.orderFilters[key];
+  const timeControl = filters.editingTime
+    ? `<form class="time-filter" data-order-time-jump="${key}"><input data-order-time-input type="datetime-local" value="${esc(filters.time)}" aria-label="${WORK_ORDER_STATUS[key]}时间" /><button class="filter-jump" type="submit" title="按时间跳转">↵</button></form>`
+    : `<button class="filter-chip" type="button" data-order-time-toggle="${key}">时间</button>`;
+  return `<div class="column-filters">${timeControl}<select data-order-priority="${key}" aria-label="${WORK_ORDER_STATUS[key]}优先级"><option value="">优先级</option><option value="最高" ${filters.priority === '最高' ? 'selected' : ''}>最高</option><option value="高" ${filters.priority === '高' ? 'selected' : ''}>高</option><option value="中" ${filters.priority === '中' ? 'selected' : ''}>中</option><option value="低" ${filters.priority === '低' ? 'selected' : ''}>低</option></select></div>`;
 }
 
 function orderColumnPagination(key, totalPages) {
