@@ -8,7 +8,7 @@ export const API_CONFIG = {
 // Tencent Maps GL JS API settings. The browser key must be restricted to the
 // domains where this dashboard is deployed.
 export const TENCENT_MAP_CONFIG = {
-  key: '',
+  key: 'ZADBZ-4WKKZ-ZQSXW-TBWZU-YJT6K-HBBHL',
   center: { latitude: 30.261, longitude: 120.192 },
   zoom: 13,
 };
