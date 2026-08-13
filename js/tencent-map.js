@@ -3,7 +3,9 @@ import { TENCENT_MAP_CONFIG } from './config.js';
 let sdkPromise = null;
 
 function hasCoordinates(item) {
-  return Number.isFinite(Number(item?.latitude)) && Number.isFinite(Number(item?.longitude));
+  const latitude = Number(item?.latitude);
+  const longitude = Number(item?.longitude);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude !== 0 && longitude !== 0 && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
 }
 
 function pinSource(color) {
@@ -55,12 +57,12 @@ export async function createTencentMap({ container, alerts, onAlertClick }) {
 
   container.innerHTML = '';
   const points = alerts.filter(hasCoordinates);
-  const center = hasCoordinates(TENCENT_MAP_CONFIG.center)
+  const center = points.length ? mapCenter(points) : (hasCoordinates(TENCENT_MAP_CONFIG.center)
     ? TENCENT_MAP_CONFIG.center
-    : (points[0] || { latitude: 30.261, longitude: 120.192 });
+    : { latitude: 30.261, longitude: 120.192 });
   const map = new TMap.Map(container, {
     center: new TMap.LatLng(Number(center.latitude), Number(center.longitude)),
-    zoom: TENCENT_MAP_CONFIG.zoom,
+    zoom: points.length ? zoomForPoints(points) : TENCENT_MAP_CONFIG.zoom,
   });
   const marker = new TMap.MultiMarker({
     map,
@@ -69,22 +71,11 @@ export async function createTencentMap({ container, alerts, onAlertClick }) {
       normal: new TMap.MarkerStyle({ width: 34, height: 46, anchor: { x: 17, y: 46 }, src: pinSource('#eb9b24') }),
     },
   });
-  const polyline = new TMap.MultiPolyline({
-    map,
-    styles: {
-      route: new TMap.PolylineStyle({ color: '#3478f6', width: 6, borderWidth: 2, borderColor: '#ffffff', lineCap: 'round' }),
-    },
-    geometries: points.length > 1 ? [{
-      id: 'inspection-route', styleId: 'route',
-      paths: points.map(point => new TMap.LatLng(Number(point.latitude), Number(point.longitude))),
-    }] : [],
-  });
-
   const renderMarkers = (categories) => {
     const visiblePoints = points.filter(point => !categories || categories.has(point.category));
     marker.setGeometries(visiblePoints.map(point => ({
       id: point.id,
-      styleId: point.severity === '高' ? 'high' : 'normal',
+      styleId: ['高', '最高'].includes(point.severity) ? 'high' : 'normal',
       position: new TMap.LatLng(Number(point.latitude), Number(point.longitude)),
       properties: { id: point.id },
     })));
@@ -103,6 +94,26 @@ export async function createTencentMap({ container, alerts, onAlertClick }) {
       map.setCenter(new TMap.LatLng(Number(point.latitude), Number(point.longitude)));
       map.setZoom(16);
     },
-    destroy() { marker.setMap(null); polyline.setMap(null); },
+    destroy() { marker.setMap(null); },
   };
+}
+
+function mapCenter(points) {
+  const totals = points.reduce((sum, point) => ({
+    latitude: sum.latitude + Number(point.latitude),
+    longitude: sum.longitude + Number(point.longitude),
+  }), { latitude: 0, longitude: 0 });
+  return { latitude: totals.latitude / points.length, longitude: totals.longitude / points.length };
+}
+
+function zoomForPoints(points) {
+  if (points.length < 2) return 15;
+  const latitudes = points.map(point => Number(point.latitude));
+  const longitudes = points.map(point => Number(point.longitude));
+  const span = Math.max(Math.max(...latitudes) - Math.min(...latitudes), Math.max(...longitudes) - Math.min(...longitudes));
+  if (span < 0.02) return 14;
+  if (span < 0.08) return 12;
+  if (span < 0.25) return 10;
+  if (span < 0.8) return 8;
+  return 6;
 }

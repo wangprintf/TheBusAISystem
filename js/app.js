@@ -80,7 +80,7 @@ function renderNav() {
 async function go(page) {
   if (page !== 'devices') stopDeviceAutoRefresh();
   if (page !== 'map' && activeMapController) { activeMapController.destroy(); activeMapController = null; }
-  state.page = page; setCriticalAlarm(false); document.body.classList.remove('orders-page','devices-page'); orderSummary.innerHTML = ''; const item = navItems.find(i => i[0] === page); title.textContent = item[2]; kicker.textContent = item[3]; renderNav();
+  state.page = page; setCriticalAlarm(false); document.body.classList.remove('orders-page','devices-page'); orderSummary.innerHTML = ''; const item = navItems.find(i => i[0] === page); title.textContent = item[2]; kicker.textContent = ''; renderNav();
   if (!canRenderFromCache(page)) pageContent.innerHTML = `<div class="loading">正在加载数据…</div>`;
   const renderers = { dashboard:renderDashboard, alerts:renderAlerts, orders:renderOrders, map:renderMap, devices:renderDevices, settings:renderSettings };
   try {
@@ -115,15 +115,18 @@ async function getDashboardData(force = false) { state.dashboard = await loadCac
 async function getAlertsData(force = false) { state.alerts = await loadCached('alerts', () => api.getAlerts(), force); return state.alerts; }
 async function getOrdersData(force = false) { state.orders = await loadCached('orders', () => api.getWorkOrders(), force); return state.orders; }
 async function getDevicesData(force = false) { state.devices = await loadCached('devices', () => api.getDevices(), force); updateOnlineDeviceCount(state.devices); return state.devices; }
-async function loadCore() { [state.dashboard, state.alerts, state.orders, state.devices] = await Promise.all([getDashboardData(), getAlertsData(), getOrdersData().catch(() => []), getDevicesData().catch(() => [])]); }
-function metric(label, value, sub, tone) { return `<article class="metric-card"><div class="metric-label">${label}<span class="metric-icon ${tone}">●</span></div><strong>${value}</strong><small>${sub}</small></article>`; }
+async function loadCore() { [state.dashboard, state.alerts, state.orders, state.devices] = await Promise.all([getDashboardData(), getAlertsData(), getOrdersData().catch(() => []), getDevicesData(true).catch(() => [])]); }
+function metric(label, value, sub, tone) { return `<article class="metric-card"><div class="metric-label">${label}<span class="metric-icon ${tone}">●</span></div><strong>${value}</strong></article>`; }
 function metricSimple(label, value, tone) { return `<article class="metric-card metric-card-simple"><div class="metric-label">${label}<span class="metric-icon ${tone}">●</span></div><strong>${value}</strong></article>`; }
 async function renderDashboard() {
   await loadCore(); const d = state.dashboard;
-  pageContent.innerHTML = `<section class="metrics">${metric('今日告警',d.todayAlerts,'较昨日 +12.4%','blue')}${metric('有效告警率',`${d.validRate}%`,'目标 ≥ 90%','green')}${metric('待处理工单',d.pendingOrders,'其中 3 条高优先级','amber')}${metric('设备在线率',`${d.onlineRate}%`,'28 / 30 台在线','purple')}</section>
-  <section class="grid two-one"><article class="panel"><div class="panel-head"><div><h2>告警趋势</h2><p>近 7 日有效告警数量</p></div><button class="link-btn" data-jump="orders">进入工单中心 →</button></div><div class="chart">${d.trend.map((n,i) => `<div class="bar-wrap"><span>${n}</span><div class="bar" style="height:${n/0.52}%"></div><small>${['周二','周三','周四','周五','周六','周日','今日'][i]}</small></div>`).join('')}</div></article>
-  <article class="panel"><div class="panel-head"><div><h2>处置效率</h2><p>今日工单处理状态</p></div></div><div class="donut-row"><div class="donut"><b>86%</b><span>按时处置</span></div><div class="legend"><p><i class="green-dot"></i> 已完成 <b>36</b></p><p><i class="blue-dot"></i> 处理中 <b>12</b></p><p><i class="amber-dot"></i> 未处理 <b>8</b></p></div></div></article></section>
-  <section class="grid two-one"><article class="panel"><div class="panel-head"><div><h2>待处置告警</h2><p>需要快速响应的 AI 识别事件</p></div><button class="link-btn" data-jump="orders">全部进入工单 →</button></div>${alertRows(state.alerts.filter(a => a.status === 'pending').slice(0,3))}</article><article class="panel"><div class="panel-head"><div><h2>设备健康度</h2><p>异常设备需要关注</p></div><button class="link-btn" data-jump="devices">运维中心 →</button></div>${deviceMini(state.devices)}</article></section>`;
+  const onlineDeviceTotal = state.devices.length;
+  const onlineDeviceCount = state.devices.filter(isOnlineDevice).length;
+  const onlineDeviceRate = onlineDeviceTotal ? (onlineDeviceCount / onlineDeviceTotal * 100).toFixed(1) : '0.0';
+  pageContent.innerHTML = `<section class="metrics">${metric('今日告警',d.todayAlerts,'较昨日 +12.4%','blue')}${metric('有效告警率',`${d.validRate}%`,'目标 ≥ 90%','green')}${metric('待处理工单',d.pendingOrders,'其中 3 条高优先级','amber')}${metric('设备在线率',`${onlineDeviceRate}%`,`${onlineDeviceCount} / ${onlineDeviceTotal} 台在线`,'purple')}</section>
+  <section class="grid two-one"><article class="panel"><div class="panel-head"><div><h2>告警趋势</h2></div><button class="link-btn" data-jump="orders">进入工单中心 →</button></div><div class="chart">${d.trend.map((n,i) => `<div class="bar-wrap"><span>${n}</span><div class="bar" style="height:${n/0.52}%"></div><small>${['周二','周三','周四','周五','周六','周日','今日'][i]}</small></div>`).join('')}</div></article>
+  <article class="panel"><div class="panel-head"><div><h2>处置效率</h2></div></div><div class="donut-row"><div class="donut"><b>86%</b><span>按时处置</span></div><div class="legend"><p><i class="green-dot"></i> 已完成 <b>36</b></p><p><i class="blue-dot"></i> 处理中 <b>12</b></p><p><i class="amber-dot"></i> 未处理 <b>8</b></p></div></div></article></section>
+  <section class="grid two-one"><article class="panel"><div class="panel-head"><div><h2>待处置告警</h2></div><button class="link-btn" data-jump="orders">全部进入工单 →</button></div>${alertRows(state.alerts.filter(a => a.status === 'pending').slice(0,3))}</article><article class="panel"><div class="panel-head"><div><h2>设备健康度</h2></div><button class="link-btn" data-jump="devices">运维中心 →</button></div>${deviceMini(state.devices)}</article></section>`;
   bindJump();
 }
 function alertRows(alerts) { return `<div class="mini-list">${alerts.map(a => `<button class="alert-mini" data-alert="${a.id}"><span class="scene ${a.thumbnail}">${a.thumbnail}</span><span><b>${a.type}</b><small>${a.location} · ${a.occurredAt}</small></span>${badge(a.severity, severityClass(a.severity))}</button>`).join('')}</div>`; }
@@ -137,9 +140,14 @@ async function renderAlerts() {
   document.querySelector('#alert-filter').addEventListener('click', async () => { const filters={status:document.querySelector('#alert-status').value,keyword:document.querySelector('#alert-search').value.trim()}; const rows=await api.getAlerts(filters); paintAlertTable(rows); });
 }
 function paintAlertTable(alerts) { document.querySelector('#alert-count').textContent=alerts.length; document.querySelector('#alert-table').innerHTML = alerts.map(a => `<tr><td><div class="event-cell"><span class="scene ${a.thumbnail}">${a.thumbnail}</span><span><b>${a.type}</b><small>${a.category} · ${badge(a.severity,a.severity==='高'?'red':'amber')}</small></span></div></td><td>${a.occurredAt}<small>2026-07-13</small></td><td>${a.route}<small>${a.deviceId}</small></td><td>${a.location}</td><td><b>${a.confidence}%</b></td><td>${badge(ALERT_STATUS[a.status],statusClass(a.status))}</td><td><button class="text-btn" data-alert="${a.id}">查看</button></td></tr>`).join('') || `<tr><td colspan="7" class="empty">没有匹配的告警记录</td></tr>`; document.querySelectorAll('[data-alert]').forEach(x => x.addEventListener('click',() => openAlert(x.dataset.alert))); }
+function alertEvidence(alert) {
+  const source = String(alert.evidenceUrl || '').trim();
+  if (/^https?:\/\//i.test(source)) return `<img class="evidence-image" src="${esc(source)}" alt="${esc(alert.type)}现场取证图片" />`;
+  return `<div class="evidence-empty"><b>暂无现场取证图片</b><span>设备上传图片后将在此展示</span></div>`;
+}
 async function openAlert(id) {
   const alert = state.alerts.find(x => x.id === id) || (await api.getAlerts()).find(x => x.id === id); if (!alert) return;
-  document.querySelector('#drawer-root').innerHTML = `<div class="scrim" id="close-drawer"></div><aside class="drawer"><button class="close" id="close-drawer-btn">×</button><p class="eyebrow">告警详情 · ${alert.id}</p><h2>${alert.type} ${badge(alert.severity,alert.severity==='高'?'red':'amber')}</h2><div class="evidence"><div class="road-scene"><span>车载前视取证画面</span><b>${alert.thumbnail}</b><i>REC · ${alert.occurredAt}</i></div><div class="thumb-row"><button class="selected">抓拍图</button><button>前后 10s 视频</button></div></div><dl class="detail-list"><div><dt>发生位置</dt><dd>${alert.location}</dd></div><div><dt>公交线路 / 设备</dt><dd>${alert.route} · ${alert.deviceId}</dd></div><div><dt>AI 置信度</dt><dd>${alert.confidence}%</dd></div><div><dt>事件说明</dt><dd>${alert.description}</dd></div></dl><div class="audit"><p>审核结论</p><div><button class="outline-btn" data-review="false">标记误报</button><button class="primary-btn" data-review="valid">确认有效</button></div><button class="wide-btn" id="create-order">＋ 转为处置工单</button></div></aside>`;
+  document.querySelector('#drawer-root').innerHTML = `<div class="scrim" id="close-drawer"></div><aside class="drawer"><button class="close" id="close-drawer-btn">×</button><p class="eyebrow">告警详情 · ${alert.id}</p><h2>${alert.type} ${badge(alert.severity,alert.severity==='高'?'red':'amber')}</h2><div class="evidence"><div class="evidence-stage">${alertEvidence(alert)}<span class="evidence-label">现场取证图片</span><i>REC · ${alert.occurredAt}</i></div></div><dl class="detail-list"><div><dt>发生位置</dt><dd>${alert.location}</dd></div><div><dt>公交线路 / 设备</dt><dd>${alert.route} · ${alert.deviceId}</dd></div><div><dt>AI 置信度</dt><dd>${alert.confidence}%</dd></div><div><dt>事件说明</dt><dd>${alert.description}</dd></div></dl><div class="audit"><p>审核结论</p><div><button class="outline-btn" data-review="false">标记误报</button><button class="primary-btn" data-review="valid">确认有效</button></div><button class="wide-btn" id="create-order">＋ 转为处置工单</button></div></aside>`;
   const close=()=>document.querySelector('#drawer-root').innerHTML=''; document.querySelector('#close-drawer').addEventListener('click',close); document.querySelector('#close-drawer-btn').addEventListener('click',close);
   document.querySelectorAll('[data-review]').forEach(b=>b.addEventListener('click',async()=>{ await api.updateAlert(id,{status:b.dataset.review}); showToast(b.dataset.review==='valid'?'已确认有效告警':'已标记为误报'); close(); go('orders'); }));
   document.querySelector('#create-order').addEventListener('click',async()=>{ await api.createWorkOrder({title:`处置${alert.location}${alert.type}`,sourceAlertId:alert.id,location:alert.location}); await api.updateAlert(id,{status:'dispatched'}); showToast('工单已创建，等待指派'); close(); go('orders'); });
@@ -165,7 +173,7 @@ async function renderOrders() {
     try {
       await api.reviewWorkOrder(button.dataset.orderReview, isValid, order?.remarks);
       invalidateCache('orders');
-      showToast(isValid === 0 ? '已标记无效，审核备注已写入数据库' : '已确认有效，审核备注已写入数据库');
+      showToast(isValid === 0 ? '已判定无效，已从工单中心移除' : '已确认有效，审核结果已写入数据库');
       await renderOrders();
     } catch (error) {
       button.disabled = false;
@@ -284,7 +292,7 @@ function openOrderDetail(id) {
     }));
     root.querySelectorAll('[data-detail-review]').forEach(button => button.addEventListener('click', async () => {
       button.disabled = true;
-      try { await api.reviewWorkOrder(order.id, Number(button.dataset.valid), order.remarks); invalidateCache('orders'); showToast(Number(button.dataset.valid) ? '已判定合格' : '已判定不合格'); close(); await renderOrders(); }
+      try { const isValid = Number(button.dataset.valid); await api.reviewWorkOrder(order.id, isValid, order.remarks); invalidateCache('orders'); showToast(isValid ? '已确认有效' : '已判定无效，已从工单中心移除'); close(); await renderOrders(); }
       catch (error) { button.disabled = false; showToast(error.message || '审核结果写入失败'); }
     }));
   };
@@ -316,20 +324,29 @@ async function renderLegacyOrders() {
 function orderCard(o) { const source = state.alerts.find(a => a.id === o.sourceAlertId); return `<article class="order-card ${source ? severityClass(source.severity) : ''}"><span>${o.id}</span>${source ? badge(source.severity, severityClass(source.severity)) : ''}<h4>${o.title}</h4><p>⌖ ${o.location}</p><footer><b>${o.assignee}</b><em>${o.dueAt}</em></footer></article>`; }
 
 async function renderMap() {
-  await getAlertsData();
+  await getOrdersData(true);
   activeMapController?.destroy();
-  pageContent.innerHTML = `<section class="map-page"><div class="map-panel"><div id="tencent-map" class="tencent-map" aria-label="腾讯地图"></div><div class="map-head"><b>城市巡检态势</b><span>${state.alerts.length} 个事件点位</span></div><div class="map-legend"><i class="red-dot"></i> 高优先级　<i class="amber-dot"></i> 一般事件　<span class="legend-route"></span> 公交巡检路线</div></div><aside class="map-side panel"><h2>巡检图层</h2><label class="switch-row">道路病害 <input type="checkbox" checked data-map-category="道路病害"></label><label class="switch-row">道路设施 <input type="checkbox" checked data-map-category="道路设施"></label><label class="switch-row">施工市容 <input type="checkbox" checked data-map-category="市容巡检"></label><label class="switch-row">车载设备 <input type="checkbox" checked data-map-category="车载设备"></label><hr><h3>高优先级事件</h3>${alertRows(state.alerts.filter(x => x.severity === '高'))}</aside></section>`;
+  const validMapOrders = state.orders.filter(order => hasMapCoordinates(order));
+  const coordinateText = order => `${Number(order.longitude).toFixed(6)}, ${Number(order.latitude).toFixed(6)}`;
+  const mapEventRows = validMapOrders.map(order => `<button class="map-event-row" data-map-order="${esc(order.id)}"><span class="map-event-dot ${['高', '最高'].includes(order.severity) ? 'high' : ''}"></span><span><b>${esc(order.title)}</b><small>${esc(coordinateText(order))}</small></span>${badge(order.priority, severityClass(order.priority))}</button>`).join('') || `<p class="map-empty">暂无可用经纬度的事件</p>`;
+  pageContent.innerHTML = `<section class="map-page"><div class="map-panel"><div id="tencent-map" class="tencent-map" aria-label="腾讯地图"></div><div class="map-head"><b>城市巡检态势</b><span>已定位 ${validMapOrders.length} / ${state.orders.length} 个工单事件</span></div><div class="map-legend"><i class="red-dot"></i> 高优先级　<i class="amber-dot"></i> 一般事件</div></div><aside class="map-side panel"><h2>工单图层</h2><label class="switch-row">机动车 <input type="checkbox" checked data-map-category="机动车"></label><label class="switch-row">非机动车 <input type="checkbox" checked data-map-category="非机动车"></label><label class="switch-row">行人 <input type="checkbox" checked data-map-category="行人"></label><label class="switch-row">道路 <input type="checkbox" checked data-map-category="道路"></label><hr><div class="map-event-heading"><h3>已定位事件</h3><span>${validMapOrders.length}</span></div><div class="map-event-list">${mapEventRows}</div></aside></section>`;
   activeMapController = await createTencentMap({
     container: pageContent.querySelector('#tencent-map'),
-    alerts: state.alerts,
-    onAlertClick: openAlert,
+    alerts: validMapOrders,
+    onAlertClick: openOrderDetail,
   });
   const selectedCategories = () => new Set([...pageContent.querySelectorAll('[data-map-category]:checked')].map(input => input.dataset.mapCategory));
   pageContent.querySelectorAll('[data-map-category]').forEach(input => input.addEventListener('change', () => activeMapController?.setVisibleCategories(selectedCategories())));
-  pageContent.querySelectorAll('[data-alert]').forEach(button => button.addEventListener('click', () => {
-    activeMapController?.focusAlert(button.dataset.alert);
-    openAlert(button.dataset.alert);
+  pageContent.querySelectorAll('[data-map-order]').forEach(button => button.addEventListener('click', () => {
+    activeMapController?.focusAlert(button.dataset.mapOrder);
+    openOrderDetail(button.dataset.mapOrder);
   }));
+}
+
+function hasMapCoordinates(order) {
+  const latitude = Number(order?.latitude);
+  const longitude = Number(order?.longitude);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude !== 0 && longitude !== 0 && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
 }
 
 async function renderDevices() { await refreshDevices(); startDeviceAutoRefresh(); }

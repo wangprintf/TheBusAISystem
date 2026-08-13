@@ -1,6 +1,6 @@
 /**
  * 后端建议的数据模型：
- * Alert { id, type, category, severity, status, confidence, occurredAt, route,
+ * Alert { id, type, category: '机动车' | '非机动车' | '行人' | '道路', severity, status, confidence, occurredAt, route,
  *         location, longitude, latitude, deviceId, thumbnail, evidenceUrl, description }
  * WorkOrder { id, title, sourceAlertId, status, assignee, dueAt, updatedAt, location }
  * Device { id, name, route, status, network, storage, temperature, modelVersion, lastSeen }

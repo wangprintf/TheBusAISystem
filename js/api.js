@@ -1,10 +1,10 @@
 import { API_CONFIG } from './config.js';
 
 const mockAlerts = [
-  { id:'AL-20260713-0086', type:'路面坑洼', category:'道路病害', severity:'高', status:'pending', confidence:96.8, occurredAt:'10:23:16', route:'B12 路', location:'南京路与营口道交叉口', longitude:117.196, latitude:39.118, deviceId:'BUS-012', thumbnail:'坑洼', description:'检测到主车道疑似深度较大的路面坑洼，建议优先复核。' },
-  { id:'AL-20260713-0085', type:'护栏损坏', category:'道路设施', severity:'中', status:'pending', confidence:93.4, occurredAt:'10:08:42', route:'B12 路', location:'卫津路八里台立交附近', longitude:117.174, latitude:39.095, deviceId:'BUS-012', thumbnail:'护栏', description:'中央隔离护栏存在倾斜和缺失风险。' },
-  { id:'AL-20260713-0081', type:'违规占道施工', category:'市容巡检', severity:'高', status:'dispatched', confidence:91.2, occurredAt:'09:42:03', route:'K8 路', location:'黑牛城道与友谊南路交叉口', longitude:117.208, latitude:39.078, deviceId:'BUS-008', thumbnail:'施工', description:'施工区域疑似未设置完整警示设施。' },
-  { id:'AL-20260713-0078', type:'井盖移位', category:'道路病害', severity:'中', status:'valid', confidence:89.7, occurredAt:'09:15:37', route:'K8 路', location:'津塘路与十一经路交叉口', longitude:117.209, latitude:39.104, deviceId:'BUS-008', thumbnail:'井盖', description:'井盖边缘存在明显位移。' },
+  { id:'AL-20260713-0086', type:'机动车违停', category:'机动车', severity:'高', status:'pending', confidence:96.8, occurredAt:'10:23:16', route:'B12 路', location:'南京路与营口道交叉口', longitude:117.196, latitude:39.118, deviceId:'BUS-012', thumbnail:'违停', description:'检测到机动车在禁停路段持续停留，建议优先复核。' },
+  { id:'AL-20260713-0085', type:'非机动车逆行', category:'非机动车', severity:'中', status:'pending', confidence:93.4, occurredAt:'10:08:42', route:'B12 路', location:'卫津路八里台立交附近', longitude:117.174, latitude:39.095, deviceId:'BUS-012', thumbnail:'逆行', description:'检测到非机动车沿反向车道行驶，存在交通安全风险。' },
+  { id:'AL-20260713-0081', type:'行人闯红灯', category:'行人', severity:'高', status:'dispatched', confidence:91.2, occurredAt:'09:42:03', route:'K8 路', location:'黑牛城道与友谊南路交叉口', longitude:117.208, latitude:39.078, deviceId:'BUS-008', thumbnail:'闯灯', description:'检测到行人在红灯期间进入机动车道，建议及时处置。' },
+  { id:'AL-20260713-0078', type:'路面坑洼', category:'道路', severity:'中', status:'valid', confidence:89.7, occurredAt:'09:15:37', route:'K8 路', location:'津塘路与十一经路交叉口', longitude:117.209, latitude:39.104, deviceId:'BUS-008', thumbnail:'坑洼', description:'检测到路面存在明显坑洼，建议安排现场复核。' },
 ];
 
 const mockDevices = [
@@ -74,13 +74,19 @@ export const api = {
       request('/api/events/finish').catch(() => []),
     ]);
     const finishMediaByEventId = new Map((Array.isArray(finishMedia) ? finishMedia : []).map(item => [String(item.id), item]));
-    return (Array.isArray(events) ? events : []).map(event => mapDatabaseEvent(event, finishMediaByEventId.get(String(event.id))));
+    return (Array.isArray(events) ? events : [])
+      .filter(event => Number(event.is_valid) !== 0)
+      .map(event => mapDatabaseEvent(event, finishMediaByEventId.get(String(event.id))));
   },
   async reviewWorkOrder(id, isValid, existingRemarks = '') {
     if (![0, 1].includes(Number(isValid))) throw new Error('审核结果必须为 0 或 1');
     const auditRemark = isValid === 0 ? '人工审核结果：无效' : '人工审核结果：有效';
     const previousRemark = existingRemarks.replace(/^人工审核结果：(无效|有效)[；;]?\s*/, '');
-    return requestForm('/api/events/update', { id: String(id), remarks: [auditRemark, previousRemark].filter(Boolean).join('；') });
+    return requestForm('/api/events/update', {
+      id: String(id),
+      is_valid: String(isValid),
+      remarks: [auditRemark, previousRemark].filter(Boolean).join('；'),
+    });
   },
   async sendWorkOrder(id) {
     return requestForm('/api/events/update', { id: String(id), process_status:'处理中' });
@@ -120,6 +126,9 @@ function mapDatabaseEvent(event, finishMedia = {}) {
     : (processStatus === '处理中' ? 'processing' : 'pending');
   const alertMedia = parseMediaUrls(event.media_url);
   const processedMedia = parseMediaUrls(finishMedia.media_url || event.finish_media_url || event.processed_media_url || event.after_media_url || event.handle_media_url || event.media_url_finish || '');
+  const latitude = toNumberOrNull(event.latitude);
+  const longitude = toNumberOrNull(event.longitude);
+  const sourceType = `${event.event_type || ''} ${event.detail_type || ''}`;
   return {
     id: String(event.id),
     title: [event.event_type, event.detail_type].filter(Boolean).join(' · ') || `事件 ${event.id}`,
@@ -127,16 +136,28 @@ function mapDatabaseEvent(event, finishMedia = {}) {
     status,
     processStatus,
     priority: event.priority_level || '普通',
+    severity: event.priority_level || '普通',
+    category: mapEventCategory(sourceType),
     occurredAt: event.report_time || '--',
     finishAt: event.finish_time || '',
-    location: event.longitude && event.latitude ? `${event.longitude}, ${event.latitude}` : '位置暂缺',
+    latitude,
+    longitude,
+    location: longitude !== null && latitude !== null ? `${longitude}, ${latitude}` : '位置暂缺',
     licensePlate: event.license_plate || '未识别车牌',
     remarks,
+    isValid: event.is_valid === null || event.is_valid === undefined || event.is_valid === '' ? null : Number(event.is_valid),
     reviewStatus,
     alertMedia,
     processedMedia,
     evidenceUrl: alertMedia.find(item => item.kind === 'image')?.url || '',
   };
+}
+
+function mapEventCategory(sourceType) {
+  if (sourceType.includes('非机动车')) return '非机动车';
+  if (sourceType.includes('机动车') || sourceType.includes('车辆') || sourceType.includes('货车')) return '机动车';
+  if (sourceType.includes('行人') || sourceType.includes('人行')) return '行人';
+  return '道路';
 }
 
 function parseMediaUrls(value) {
