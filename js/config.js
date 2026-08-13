@@ -9,6 +9,8 @@ export const API_CONFIG = {
 // domains where this dashboard is deployed.
 export const TENCENT_MAP_CONFIG = {
   key: 'ZADBZ-4WKKZ-ZQSXW-TBWZU-YJT6K-HBBHL',
-  center: { latitude: 30.261, longitude: 120.192 },
+  // Tianjin city center. Production data points will take precedence when
+  // the alert API returns their real coordinates.
+  center: { latitude: 39.084158, longitude: 117.200983 },
   zoom: 13,
 };

@@ -1,10 +1,10 @@
 import { API_CONFIG } from './config.js';
 
 const mockAlerts = [
-  { id:'AL-20260713-0086', type:'路面坑洼', category:'道路病害', severity:'高', status:'pending', confidence:96.8, occurredAt:'10:23:16', route:'B12 路', location:'滨江大道与迎宾路交叉口', longitude:120.192, latitude:30.261, deviceId:'BUS-012', thumbnail:'坑洼', description:'检测到主车道疑似深度较大的路面坑洼，建议优先复核。' },
-  { id:'AL-20260713-0085', type:'护栏损坏', category:'道路设施', severity:'中', status:'pending', confidence:93.4, occurredAt:'10:08:42', route:'B12 路', location:'东城路 728 号附近', longitude:120.18, latitude:30.25, deviceId:'BUS-012', thumbnail:'护栏', description:'中央隔离护栏存在倾斜和缺失风险。' },
-  { id:'AL-20260713-0081', type:'违规占道施工', category:'市容巡检', severity:'高', status:'dispatched', confidence:91.2, occurredAt:'09:42:03', route:'K8 路', location:'文一路地铁站南侧', longitude:120.16, latitude:30.27, deviceId:'BUS-008', thumbnail:'施工', description:'施工区域疑似未设置完整警示设施。' },
-  { id:'AL-20260713-0078', type:'井盖移位', category:'道路病害', severity:'中', status:'valid', confidence:89.7, occurredAt:'09:15:37', route:'K8 路', location:'学院路 318 号', longitude:120.17, latitude:30.24, deviceId:'BUS-008', thumbnail:'井盖', description:'井盖边缘存在明显位移。' },
+  { id:'AL-20260713-0086', type:'路面坑洼', category:'道路病害', severity:'高', status:'pending', confidence:96.8, occurredAt:'10:23:16', route:'B12 路', location:'南京路与营口道交叉口', longitude:117.196, latitude:39.118, deviceId:'BUS-012', thumbnail:'坑洼', description:'检测到主车道疑似深度较大的路面坑洼，建议优先复核。' },
+  { id:'AL-20260713-0085', type:'护栏损坏', category:'道路设施', severity:'中', status:'pending', confidence:93.4, occurredAt:'10:08:42', route:'B12 路', location:'卫津路八里台立交附近', longitude:117.174, latitude:39.095, deviceId:'BUS-012', thumbnail:'护栏', description:'中央隔离护栏存在倾斜和缺失风险。' },
+  { id:'AL-20260713-0081', type:'违规占道施工', category:'市容巡检', severity:'高', status:'dispatched', confidence:91.2, occurredAt:'09:42:03', route:'K8 路', location:'黑牛城道与友谊南路交叉口', longitude:117.208, latitude:39.078, deviceId:'BUS-008', thumbnail:'施工', description:'施工区域疑似未设置完整警示设施。' },
+  { id:'AL-20260713-0078', type:'井盖移位', category:'道路病害', severity:'中', status:'valid', confidence:89.7, occurredAt:'09:15:37', route:'K8 路', location:'津塘路与十一经路交叉口', longitude:117.209, latitude:39.104, deviceId:'BUS-008', thumbnail:'井盖', description:'井盖边缘存在明显位移。' },
 ];
 
 const mockDevices = [
