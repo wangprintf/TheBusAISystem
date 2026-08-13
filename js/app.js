@@ -21,6 +21,7 @@ const dateButton = document.querySelector('#date-button');
 const profileButton = document.querySelector('#profile-button');
 const profileRoot = document.querySelector('#profile-root');
 const orderSummary = document.querySelector('#order-summary');
+const onlineDeviceCount = document.querySelector('#online-device-count');
 const PROFILE_KEY = 'traffic-user-profile';
 let deviceRefreshTimer = null;
 let deviceRefreshInFlight = false;
@@ -32,6 +33,10 @@ function badge(value, type = '') { return `<span class="badge ${type || value}">
 function statusClass(status) { return { pending:'amber', valid:'green', false:'gray', dispatched:'blue', online:'green', warning:'amber', offline:'red', processing:'blue', review:'purple', completed:'green', '正常':'green', '异常':'amber', '离线':'red' }[status] || 'gray'; }
 function severityClass(severity) { return { '高':'red', '中':'amber', '低':'green', '安全':'green' }[severity] || 'gray'; }
 function setCriticalAlarm(active) { document.body.classList.toggle('critical-alarm', active); }
+function isOnlineDevice(device) { return device.status === '正常' || device.status === 'online'; }
+function updateOnlineDeviceCount(devices = state.devices) {
+  onlineDeviceCount.textContent = devices.filter(isOnlineDevice).length;
+}
 function showToast(message) { const el = document.querySelector('#toast'); el.textContent = message; el.classList.add('visible'); setTimeout(() => el.classList.remove('visible'), 2600); }
 function stopDeviceAutoRefresh() { if (deviceRefreshTimer) { clearInterval(deviceRefreshTimer); deviceRefreshTimer = null; } }
 function startDeviceAutoRefresh() {
@@ -109,7 +114,7 @@ function invalidateCache(key) { dataCache[key].loadedAt = 0; }
 async function getDashboardData(force = false) { state.dashboard = await loadCached('dashboard', () => api.getDashboard(), force); return state.dashboard; }
 async function getAlertsData(force = false) { state.alerts = await loadCached('alerts', () => api.getAlerts(), force); return state.alerts; }
 async function getOrdersData(force = false) { state.orders = await loadCached('orders', () => api.getWorkOrders(), force); return state.orders; }
-async function getDevicesData(force = false) { state.devices = await loadCached('devices', () => api.getDevices(), force); return state.devices; }
+async function getDevicesData(force = false) { state.devices = await loadCached('devices', () => api.getDevices(), force); updateOnlineDeviceCount(state.devices); return state.devices; }
 async function loadCore() { [state.dashboard, state.alerts, state.orders, state.devices] = await Promise.all([getDashboardData(), getAlertsData(), getOrdersData().catch(() => []), getDevicesData().catch(() => [])]); }
 function metric(label, value, sub, tone) { return `<article class="metric-card"><div class="metric-label">${label}<span class="metric-icon ${tone}">●</span></div><strong>${value}</strong><small>${sub}</small></article>`; }
 function metricSimple(label, value, tone) { return `<article class="metric-card metric-card-simple"><div class="metric-label">${label}<span class="metric-icon ${tone}">●</span></div><strong>${value}</strong></article>`; }
@@ -335,7 +340,7 @@ async function refreshDevices(force = false) {
     await getDevicesData(force);
     lastDeviceRefresh = new Date();
     if (state.page !== 'devices') return;
-    const online=state.devices.filter(d=>d.status==='正常').length;
+    const online=state.devices.filter(isOnlineDevice).length;
     const attention=state.devices.filter(d=>d.status==='异常').length;
     document.body.classList.add('devices-page');
     pageContent.innerHTML=`<section class="metrics compact">${metricSimple('接入设备',state.devices.length,'blue')}${metricSimple('当前在线',online,'green')}${metricSimple('需关注',attention,'amber')}</section><section class="panel table-panel"><div class="panel-head"><div><h2>车载设备</h2></div><button class="outline-btn">导出运维记录</button></div><table><thead><tr><th>设备编号</th><th>车辆牌照</th><th>异常信息</th><th>存储</th><th>温度</th><th>状态</th></tr></thead><tbody>${state.devices.map(d=>`<tr><td><b>${d.id || '--'}</b></td><td><b>${d.name || '--'}</b></td><td>${d.abnormalInfo || '--'}</td><td>${d.storage == null ? '--' : `<div class="progress"><i style="width:${d.storage}%"></i></div>${d.storage}%`}</td><td>${d.temperature == null ? '--' : d.temperature+'°C'}</td><td>${badge(d.status || '--',d.status==='正常'?'green':d.status==='异常'?'amber':'gray')}</td></tr>`).join('')}</tbody></table></section>`;
