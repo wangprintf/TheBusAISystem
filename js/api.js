@@ -117,6 +117,12 @@ function toNumberOrNull(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function hasValidCoordinates(latitude, longitude) {
+  return Number.isFinite(latitude) && Number.isFinite(longitude)
+    && latitude !== 0 && longitude !== 0
+    && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
+}
+
 function mapDatabaseEvent(event, finishMedia = {}) {
   const remarks = event.remarks || '';
   const reviewStatus = remarks.startsWith('人工审核结果：无效') ? 0 : (remarks.startsWith('人工审核结果：有效') ? 1 : null);
@@ -142,7 +148,7 @@ function mapDatabaseEvent(event, finishMedia = {}) {
     finishAt: event.finish_time || '',
     latitude,
     longitude,
-    location: longitude !== null && latitude !== null ? `${longitude}, ${latitude}` : '位置暂缺',
+    location: hasValidCoordinates(latitude, longitude) ? `${longitude}, ${latitude}` : '未上报有效坐标',
     licensePlate: event.license_plate || '未识别车牌',
     remarks,
     isValid: event.is_valid === null || event.is_valid === undefined || event.is_valid === '' ? null : Number(event.is_valid),

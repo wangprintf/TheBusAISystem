@@ -1,6 +1,6 @@
 import { api } from './api.js';
 import { ALERT_STATUS, WORK_ORDER_STATUS } from './types.js';
-import { createTencentMap } from './tencent-map.js';
+import { createTencentMap, reverseGeocode } from './tencent-map.js';
 
 const navItems = [
   ['dashboard','▦','数据总览','运营中心'], ['orders','▤','工单中心','告警与闭环处置'],
@@ -270,6 +270,23 @@ function databaseOrderCard(order) {
   return `<article class="order-card database-order-card" data-order-detail="${esc(order.id)}" role="button" tabindex="0" aria-label="查看事件 ${esc(order.id)} 详情"><span>事件 #${esc(order.id)} · ${WORK_ORDER_STATUS[order.status] || esc(order.processStatus)}</span><div class="order-card-badges">${badge(order.priority, severityClass(order.priority))}${review}</div><h4>${esc(order.title)}</h4>${evidence}<p>车牌：${esc(order.licensePlate)}<br>位置：${esc(order.location)}</p>${order.remarks ? `<p class="order-remarks">备注：${esc(order.remarks)}</p>` : ''}<footer><b>${esc(order.occurredAt)}</b><em>${order.finishAt ? `完成 ${esc(order.finishAt)}` : '等待处置'}</em></footer>${actions}</article>`;
 }
 
+function orderCoordinate(order) {
+  return hasMapCoordinates(order)
+    ? { latitude: Number(order.latitude), longitude: Number(order.longitude) }
+    : null;
+}
+
+function orderCoordinateLabel(order) {
+  const point = orderCoordinate(order);
+  return point ? `${point.longitude.toFixed(6)}, ${point.latitude.toFixed(6)}` : '';
+}
+
+function orderLocationMarkup(order) {
+  const point = orderCoordinate(order);
+  if (!point) return `<span>${esc(order.location || '位置暂缺')}</span>`;
+  return `<span class="location-coordinate">经纬度：<b class="location-value">${esc(orderCoordinateLabel(order))}</b></span><small class="location-place" data-location-name>正在解析地点名称…</small>`;
+}
+
 function openOrderDetail(id) {
   const order = state.orders.find(item => item.id === id);
   if (!order) return;
@@ -283,7 +300,7 @@ function openOrderDetail(id) {
       : order.status === 'review'
         ? `<button class="outline-btn" type="button" data-detail-review="${esc(order.id)}" data-valid="0">不合格</button><button class="primary-btn" type="button" data-detail-review="${esc(order.id)}" data-valid="1">合格</button>`
         : '';
-    root.innerHTML = `<div class="order-detail-scrim" data-detail-close></div><section class="order-detail-dialog" role="dialog" aria-modal="true" aria-label="工单详情"><header class="order-detail-head"><div><p>工单详情 · 事件 #${esc(order.id)}</p><h2>${esc(order.title)}</h2></div><button class="order-detail-close" type="button" aria-label="关闭详情" data-detail-close>×</button></header><div class="order-detail-summary"><div><small>上报时间</small><b>${esc(order.occurredAt)}</b></div><div><small>事件类型</small><b>${esc(order.eventType || order.title)}</b></div><div><small>优先级</small>${badge(order.priority, severityClass(order.priority))}</div><div><small>审核结果</small>${badge(reviewLabel, order.reviewStatus === 1 ? 'green' : order.reviewStatus === 0 ? 'gray' : 'amber')}</div><div><small>处置状态</small><b>${esc(WORK_ORDER_STATUS[order.status] || order.processStatus)}</b></div></div><div class="order-detail-media">${detailMediaPanel('报警材料', 'alarm', order.alertMedia, mediaPage.alarm)}${detailMediaPanel('处理后材料', 'processed', order.processedMedia, mediaPage.processed)}</div><section class="order-detail-notes"><div><h3>事件信息</h3><p>车牌：${esc(order.licensePlate)}　位置：${esc(order.location)}</p></div><div><h3>备注</h3><p>${esc(order.remarks || '暂无备注')}</p></div></section><footer class="order-detail-actions">${actions}</footer></section>`;
+    root.innerHTML = `<div class="order-detail-scrim" data-detail-close></div><section class="order-detail-dialog" role="dialog" aria-modal="true" aria-label="工单详情"><header class="order-detail-head"><div><p>工单详情 · 事件 #${esc(order.id)}</p><h2>${esc(order.title)}</h2></div><button class="order-detail-close" type="button" aria-label="关闭详情" data-detail-close>×</button></header><div class="order-detail-summary"><div><small>上报时间</small><b>${esc(order.occurredAt)}</b></div><div><small>事件类型</small><b>${esc(order.eventType || order.title)}</b></div><div><small>优先级</small>${badge(order.priority, severityClass(order.priority))}</div><div><small>审核结果</small>${badge(reviewLabel, order.reviewStatus === 1 ? 'green' : order.reviewStatus === 0 ? 'gray' : 'amber')}</div><div><small>处置状态</small><b>${esc(WORK_ORDER_STATUS[order.status] || order.processStatus)}</b></div></div><div class="order-detail-media">${detailMediaPanel('报警材料', 'alarm', order.alertMedia, mediaPage.alarm)}${detailMediaPanel('处理后材料', 'processed', order.processedMedia, mediaPage.processed)}</div><section class="order-detail-notes"><div><h3>事件信息</h3><p>车牌：${esc(order.licensePlate)}<br>${orderLocationMarkup(order)}</p></div><div><h3>备注</h3><p>${esc(order.remarks || '暂无备注')}</p></div></section><footer class="order-detail-actions">${actions}</footer></section>`;
     root.querySelectorAll('[data-detail-close]').forEach(button => button.addEventListener('click', close));
     root.querySelectorAll('[data-media-step]').forEach(button => button.addEventListener('click', () => {
       const section = button.dataset.mediaSection;
@@ -303,6 +320,17 @@ function openOrderDetail(id) {
     }));
   };
   render();
+  const point = orderCoordinate(order);
+  if (point) {
+    reverseGeocode(point.latitude, point.longitude).then(placeName => {
+      const locationName = root.querySelector('[data-location-name]');
+      if (locationName) locationName.textContent = `地点名称：${placeName}`;
+    }).catch(error => {
+      console.warn('腾讯地图逆地址解析失败：', error);
+      const locationName = root.querySelector('[data-location-name]');
+      if (locationName) locationName.textContent = `地点名称解析失败：${error.message}`;
+    });
+  }
 }
 
 function detailMediaPanel(title, section, items, page) {

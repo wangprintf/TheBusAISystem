@@ -1,6 +1,8 @@
 import { TENCENT_MAP_CONFIG } from './config.js';
 
 let sdkPromise = null;
+const reverseGeocodeCache = new Map();
+let jsonpRequestId = 0;
 
 function hasCoordinates(item) {
   const latitude = Number(item?.latitude);
@@ -29,6 +31,55 @@ function loadTencentMapSdk(key) {
     document.head.appendChild(script);
   });
   return sdkPromise;
+}
+
+function requestJsonp(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName = `__tencentGeocoder${++jsonpRequestId}`;
+    const script = document.createElement('script');
+    let settled = false;
+    const timer = setTimeout(() => finish(new Error('腾讯地图服务响应超时')), 10000);
+    const finish = (error, payload) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      delete window[callbackName];
+      script.remove();
+      if (error) reject(error);
+      else resolve(payload);
+    };
+    window[callbackName] = payload => finish(null, payload);
+    script.onerror = () => finish(new Error('无法连接腾讯地图服务'));
+    script.src = `${url}${url.includes('?') ? '&' : '?'}output=jsonp&callback=${callbackName}`;
+    script.async = true;
+    document.head.appendChild(script);
+  });
+}
+
+/** Resolve database coordinates through Tencent Maps WebService reverse geocoding. */
+export async function reverseGeocode(latitude, longitude) {
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+  if (!hasCoordinates({ latitude: lat, longitude: lng })) return '';
+  const cacheKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+  if (reverseGeocodeCache.has(cacheKey)) return reverseGeocodeCache.get(cacheKey);
+  const key = TENCENT_MAP_CONFIG.key.trim();
+  if (!key) return '';
+  const query = new URLSearchParams({
+    location: `${lat},${lng}`,
+    key,
+    get_poi: '0',
+  });
+  const response = await requestJsonp(`https://apis.map.qq.com/ws/geocoder/v1/?${query}`);
+  if (Number(response?.status) !== 0) throw new Error(response?.message || '逆地址解析失败');
+  const address = response?.result?.formatted_addresses?.recommend
+    || response?.result?.address
+    || response?.result?.formatted_addresses?.rough
+    || '';
+  const placeName = String(address).trim();
+  if (!placeName) throw new Error('未返回地点名称');
+  reverseGeocodeCache.set(cacheKey, placeName);
+  return placeName;
 }
 
 function showMessage(container, title, detail, tone = '') {
