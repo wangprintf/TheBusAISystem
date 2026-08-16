@@ -2,7 +2,9 @@ import { TENCENT_MAP_CONFIG } from './config.js';
 
 let sdkPromise = null;
 const reverseGeocodeCache = new Map();
+const reverseGeocodePending = new Map();
 let jsonpRequestId = 0;
+let reverseGeocodeQuotaBlockedUntil = 0;
 
 function hasCoordinates(item) {
   const latitude = Number(item?.latitude);
@@ -63,23 +65,38 @@ export async function reverseGeocode(latitude, longitude) {
   if (!hasCoordinates({ latitude: lat, longitude: lng })) return '';
   const cacheKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
   if (reverseGeocodeCache.has(cacheKey)) return reverseGeocodeCache.get(cacheKey);
+  if (Date.now() < reverseGeocodeQuotaBlockedUntil) throw new Error('腾讯地图逆地址解析今日额度已达上限，请稍后再试');
+  if (reverseGeocodePending.has(cacheKey)) return reverseGeocodePending.get(cacheKey);
   const key = TENCENT_MAP_CONFIG.key.trim();
   if (!key) return '';
-  const query = new URLSearchParams({
-    location: `${lat},${lng}`,
-    key,
-    get_poi: '0',
-  });
-  const response = await requestJsonp(`https://apis.map.qq.com/ws/geocoder/v1/?${query}`);
-  if (Number(response?.status) !== 0) throw new Error(response?.message || '逆地址解析失败');
-  const address = response?.result?.formatted_addresses?.recommend
-    || response?.result?.address
-    || response?.result?.formatted_addresses?.rough
-    || '';
-  const placeName = String(address).trim();
-  if (!placeName) throw new Error('未返回地点名称');
-  reverseGeocodeCache.set(cacheKey, placeName);
-  return placeName;
+  const request = (async () => {
+    const query = new URLSearchParams({
+      location: `${lat},${lng}`,
+      key,
+      get_poi: '0',
+    });
+    try {
+      const response = await requestJsonp(`https://apis.map.qq.com/ws/geocoder/v1/?${query}`);
+      if (Number(response?.status) !== 0) throw new Error(response?.message || '逆地址解析失败');
+      const address = response?.result?.formatted_addresses?.recommend
+        || response?.result?.address
+        || response?.result?.formatted_addresses?.rough
+        || '';
+      const placeName = String(address).trim();
+      if (!placeName) throw new Error('未返回地点名称');
+      reverseGeocodeCache.set(cacheKey, placeName);
+      return placeName;
+    } catch (error) {
+      if (/额度|上限|quota|limit/i.test(error.message || '')) reverseGeocodeQuotaBlockedUntil = Date.now() + 24 * 60 * 60 * 1000;
+      throw error;
+    }
+  })();
+  reverseGeocodePending.set(cacheKey, request);
+  try {
+    return await request;
+  } finally {
+    reverseGeocodePending.delete(cacheKey);
+  }
 }
 
 function showMessage(container, title, detail, tone = '') {
