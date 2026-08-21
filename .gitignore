@@ -1,8 +1,11 @@
 node_modules/
 dist/
 build/
+www/
 .env
 .env.*
 !.env.example
 *.log
 .DS_Store
+backups/
+current-phone.png

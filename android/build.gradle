@@ -1,0 +1,43 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+
+    repositories {
+        // 国内网络下 Google Maven 经常超时，优先使用其镜像；官方源作为备用。
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath 'com.google.gms:google-services:4.4.4'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        google()
+        mavenCentral()
+    }
+}
+
+subprojects { project ->
+    project.plugins.withId('com.android.application') {
+        project.android.buildToolsVersion '36.0.0'
+    }
+    project.plugins.withId('com.android.library') {
+        project.android.buildToolsVersion '36.0.0'
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

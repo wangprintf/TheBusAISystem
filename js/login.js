@@ -8,13 +8,47 @@ const roles = [
 
 let selectedRole = roles[0].id;
 
+function startApp() {
+  if (document.querySelector('script[data-app-entry]')) return;
+  document.body.classList.add('app-ready');
+  const script = document.createElement('script');
+  script.type = 'module';
+  script.src = './js/app.js';
+  script.dataset.appEntry = 'true';
+  document.body.append(script);
+}
+
+function renderStartup(onComplete) {
+  const root = document.createElement('div');
+  root.id = 'startup-root';
+  root.innerHTML = `<section class="startup-screen" aria-label="智巡云正在启动">
+    <div class="startup-halo startup-halo-one"></div>
+    <div class="startup-halo startup-halo-two"></div>
+    <div class="startup-icon"><img src="./assets/zhixunyun-logo.png" alt="智巡云" /></div>
+    <div class="startup-copy"><b>智巡云</b><span>智慧城市交通巡检</span></div>
+  </section>`;
+  document.body.prepend(root);
+  requestAnimationFrame(() => root.classList.add('startup-ready'));
+  window.setTimeout(() => {
+    root.classList.add('startup-leaving');
+    window.setTimeout(() => {
+      root.remove();
+      onComplete();
+    }, 360);
+  }, 1420);
+}
+
 function renderLogin() {
+  const appShell = document.querySelector('.app-shell');
+  document.body.classList.add('login-active');
+  appShell?.setAttribute('aria-hidden', 'true');
+  appShell?.setAttribute('inert', '');
   const root = document.createElement('div');
   root.id = 'login-root';
   root.innerHTML = `
     <main class="login-page">
       <section class="login-intro">
-        <div class="login-brand"><span>智</span>智巡云</div>
+        <div class="login-brand"><span><img src="./assets/zhixunyun-logo.png" alt="" /></span>智巡云</div>
         <p class="login-kicker">TRAFFIC EVENT MANAGEMENT</p>
         <h1>统一登录，协同处置城市交通事件</h1>
         <p class="login-copy">智慧城市治理新方案，共同保障城市交通</p>
@@ -64,6 +98,10 @@ function renderLogin() {
       const result = await login(accountId, password);
       sessionStorage.setItem('traffic-auth', JSON.stringify({ token: result.token, accountId, role: selectedRole }));
       root.remove();
+      document.body.classList.remove('login-active');
+      appShell?.removeAttribute('aria-hidden');
+      appShell?.removeAttribute('inert');
+      startApp();
     } catch (requestError) {
       error.textContent = requestError.name === 'AbortError' ? '连接超时，请稍后重试。' : (requestError.message || '登录失败，请检查网络或账号密码。');
     } finally {
@@ -73,4 +111,6 @@ function renderLogin() {
   });
 }
 
-if (!sessionStorage.getItem('traffic-auth')) renderLogin();
+renderStartup(() => {
+  renderLogin();
+});

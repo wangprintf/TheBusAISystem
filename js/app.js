@@ -14,6 +14,7 @@ const dataCache = {
   devices:{ value:null, loadedAt:0, pending:null, ttl:10000 },
 };
 const pageContent = document.querySelector('#page-content');
+const mainContent = document.querySelector('.main-content');
 const nav = document.querySelector('#main-nav');
 const title = document.querySelector('#page-title');
 const kicker = document.querySelector('#page-kicker');
@@ -27,6 +28,7 @@ let deviceRefreshTimer = null;
 let deviceRefreshInFlight = false;
 let lastDeviceRefresh = null;
 let activeMapController = null;
+let pullRefreshInFlight = false;
 
 function esc(value = '') { return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function badge(value, type = '') { return `<span class="badge ${type || value}">${esc(value)}</span>`; }
@@ -91,6 +93,70 @@ async function go(page) {
     pageContent.innerHTML = `<div class="loading">数据加载失败：${esc(error.message || '无法连接服务')}<br><br><button class="primary-btn" id="retry-load">重新加载</button></div>`;
     document.querySelector('#retry-load').addEventListener('click', () => go(page));
   }
+}
+
+async function refreshCurrentPage() {
+  if (pullRefreshInFlight) return;
+  pullRefreshInFlight = true;
+  const indicator = document.querySelector('#pull-refresh-indicator');
+  indicator?.classList.add('refreshing');
+  if (indicator) indicator.textContent = '正在更新数据…';
+  try {
+    Object.keys(dataCache).forEach(invalidateCache);
+    await go(state.page);
+    if (indicator) indicator.textContent = '已更新';
+    showToast('当前页面数据已更新');
+  } catch (error) {
+    if (indicator) indicator.textContent = '更新失败';
+    showToast(error.message || '数据更新失败，请检查网络');
+  } finally {
+    window.setTimeout(() => {
+      indicator?.classList.remove('visible', 'refreshing', 'ready');
+      pullRefreshInFlight = false;
+    }, 560);
+  }
+}
+
+function installPullToRefresh() {
+  const indicator = document.createElement('div');
+  indicator.id = 'pull-refresh-indicator';
+  indicator.textContent = '下拉更新';
+  document.body.append(indicator);
+  let startY = 0;
+  let distance = 0;
+  let tracking = false;
+  const scrollTop = () => window.matchMedia('(max-width:700px)').matches
+    ? window.scrollY || document.documentElement.scrollTop || 0
+    : mainContent.scrollTop;
+  const ignoreTarget = target => target.closest('input, select, textarea, button, .tencent-map, .order-detail-dialog, .drawer');
+  document.addEventListener('touchstart', event => {
+    if (pullRefreshInFlight || scrollTop() > 1 || ignoreTarget(event.target)) return;
+    startY = event.touches[0]?.clientY || 0;
+    distance = 0;
+    tracking = true;
+  }, { passive:true });
+  document.addEventListener('touchmove', event => {
+    if (!tracking) return;
+    distance = Math.max(0, (event.touches[0]?.clientY || startY) - startY);
+    if (!distance) return;
+    if (distance > 8) event.preventDefault();
+    indicator.style.setProperty('--pull-distance', `${Math.min(distance, 92)}px`);
+    indicator.classList.add('visible');
+    indicator.classList.toggle('ready', distance >= 68);
+    indicator.textContent = distance >= 68 ? '松开即可更新' : '继续下拉更新';
+  }, { passive:false });
+  document.addEventListener('touchend', () => {
+    if (!tracking) return;
+    tracking = false;
+    if (distance >= 68) refreshCurrentPage();
+    else indicator.classList.remove('visible', 'ready');
+    distance = 0;
+  }, { passive:true });
+  document.addEventListener('touchcancel', () => {
+    tracking = false;
+    distance = 0;
+    indicator.classList.remove('visible', 'ready');
+  }, { passive:true });
 }
 
 function cacheIsFresh(key) { const entry = dataCache[key]; return entry.value !== null && Date.now() - entry.loadedAt < entry.ttl; }
@@ -170,8 +236,11 @@ async function renderOrders(navigationId = state.navigationId) {
   const statusCounts = Object.fromEntries(Object.entries(ordersByStatus).map(([key, orders]) => [key, orders.length]));
 
   document.body.classList.add('orders-page');
-  orderSummary.innerHTML = Object.entries(WORK_ORDER_STATUS).map(([key, label]) => `<article class="order-status-card ${key}"><span>${label}</span><strong>${statusCounts[key]}</strong></article>`).join('');
-  pageContent.innerHTML = `<section class="orders-list" aria-label="工单列表">${Object.entries(WORK_ORDER_STATUS).map(([key,label])=>`<div class="kanban-col"><h3><i class="${statusClass(key)}-dot"></i>${label}<span>${statusCounts[key]}</span></h3>${orderFiltersBar(key)}<div class="order-slots">${visibleOrders[key].map(databaseOrderCard).join('')}${Array.from({ length: slotsPerStatus - visibleOrders[key].length }, () => '<div class="order-card-slot" aria-hidden="true"></div>').join('')}</div>${orderColumnPagination(key, totalPages[key])}</div>`).join('')}</section>`;
+  orderSummary.innerHTML = Object.entries(WORK_ORDER_STATUS).map(([key, label]) => `<button class="order-status-card ${key}" type="button" data-order-section="${key}" aria-label="查看${label}工单，共 ${statusCounts[key]} 条"><span>${label}</span><strong>${statusCounts[key]}</strong></button>`).join('');
+  pageContent.innerHTML = `<section class="orders-list" aria-label="工单列表">${Object.entries(WORK_ORDER_STATUS).map(([key,label])=>`<div class="kanban-col" id="order-section-${key}" tabindex="-1"><h3><i class="${statusClass(key)}-dot"></i>${label}<span>${statusCounts[key]}</span></h3>${orderFiltersBar(key)}<div class="order-slots">${visibleOrders[key].map(databaseOrderCard).join('')}${Array.from({ length: slotsPerStatus - visibleOrders[key].length }, () => '<div class="order-card-slot" aria-hidden="true"></div>').join('')}</div>${orderColumnPagination(key, totalPages[key])}</div>`).join('')}</section>`;
+  orderSummary.querySelectorAll('[data-order-section]').forEach(button => button.addEventListener('click', () => {
+    document.querySelector(`#order-section-${button.dataset.orderSection}`)?.scrollIntoView({ behavior:'smooth', block:'start' });
+  }));
   pageContent.querySelectorAll('[data-order-review]').forEach(button => button.addEventListener('click', async () => {
     const isValid = Number(button.dataset.valid);
     const order = state.orders.find(item => item.id === button.dataset.orderReview);
@@ -253,6 +322,7 @@ function orderFiltersBar(key) {
 }
 
 function orderColumnPagination(key, totalPages) {
+  if (totalPages <= 1) return '';
   const currentPage = state.orderPages[key];
   const previousDisabled = currentPage === 1 ? 'disabled' : '';
   const nextDisabled = currentPage === totalPages ? 'disabled' : '';
@@ -407,5 +477,6 @@ applyProfile();
 updateClock();
 setInterval(updateClock, 1000);
 profileButton.addEventListener('click', openProfile);
+installPullToRefresh();
 
 await go('dashboard');

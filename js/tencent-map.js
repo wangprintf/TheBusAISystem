@@ -25,7 +25,9 @@ function loadTencentMapSdk(key) {
     script.src = `https://map.qq.com/api/gljs?v=1.exp&key=${encodeURIComponent(key)}`;
     script.async = true;
     script.dataset.tencentMapSdk = 'true';
-    script.onload = () => window.TMap ? resolve(window.TMap) : reject(new Error('腾讯地图脚本未正常加载'));
+    script.onload = () => window.TMap
+      ? resolve(window.TMap)
+      : reject(new Error('地图脚本已返回，但 Key 未获 Web JS API 授权'));
     script.onerror = () => {
       sdkPromise = null;
       reject(new Error('无法连接腾讯地图服务'));
@@ -128,17 +130,24 @@ export async function createTencentMap({ container, alerts, onAlertClick }) {
   const center = points.length ? mapCenter(points) : (hasCoordinates(TENCENT_MAP_CONFIG.center)
     ? TENCENT_MAP_CONFIG.center
     : { latitude: 30.261, longitude: 120.192 });
-  const map = new TMap.Map(container, {
-    center: new TMap.LatLng(Number(center.latitude), Number(center.longitude)),
-    zoom: points.length ? zoomForPoints(points) : TENCENT_MAP_CONFIG.zoom,
-  });
-  const marker = new TMap.MultiMarker({
-    map,
-    styles: {
-      high: new TMap.MarkerStyle({ width: 34, height: 46, anchor: { x: 17, y: 46 }, src: pinSource('#e9575d') }),
-      normal: new TMap.MarkerStyle({ width: 34, height: 46, anchor: { x: 17, y: 46 }, src: pinSource('#eb9b24') }),
-    },
-  });
+  let map;
+  let marker;
+  try {
+    map = new TMap.Map(container, {
+      center: new TMap.LatLng(Number(center.latitude), Number(center.longitude)),
+      zoom: points.length ? zoomForPoints(points) : TENCENT_MAP_CONFIG.zoom,
+    });
+    marker = new TMap.MultiMarker({
+      map,
+      styles: {
+        high: new TMap.MarkerStyle({ width: 34, height: 46, anchor: { x: 17, y: 46 }, src: pinSource('#e9575d') }),
+        normal: new TMap.MarkerStyle({ width: 34, height: 46, anchor: { x: 17, y: 46 }, src: pinSource('#eb9b24') }),
+      },
+    });
+  } catch (error) {
+    showMessage(container, '腾讯地图初始化失败', `${error.message || '地图服务拒绝初始化'}。请确认 Key 类型为 Web 端 JavaScript API，并在腾讯位置服务的域名白名单中加入 localhost。`, 'error');
+    return emptyController();
+  }
   const renderMarkers = (categories) => {
     const visiblePoints = points.filter(point => !categories || categories.has(point.category));
     marker.setGeometries(visiblePoints.map(point => ({

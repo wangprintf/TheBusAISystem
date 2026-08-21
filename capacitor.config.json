@@ -1,0 +1,13 @@
+{
+  "appId": "com.zhixunyun.traffic",
+  "appName": "智巡云",
+  "webDir": "www",
+  "server": {
+    "cleartext": true,
+    "hostname": "localhost",
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

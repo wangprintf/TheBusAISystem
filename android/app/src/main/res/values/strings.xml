@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">智巡云</string>
+    <string name="title_activity_main">智巡云</string>
+    <string name="package_name">com.zhixunyun.traffic</string>
+    <string name="custom_url_scheme">com.zhixunyun.traffic</string>
+</resources>
