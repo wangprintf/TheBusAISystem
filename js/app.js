@@ -6,6 +6,12 @@ const navItems = [
   ['dashboard','▦','数据总览','运营中心'], ['orders','▤','工单中心','告警与闭环处置'],
   ['map','⌖','地图巡检','空间态势'], ['devices','▣','设备运维','车载设备'], ['settings','⚙','系统配置','规则与权限'],
 ];
+const DEPARTMENT_NAVIGATION = {
+  '政府办': ['dashboard', 'orders', 'map', 'devices', 'settings'],
+  '交警支队': ['dashboard', 'orders', 'map'],
+  '路政': ['dashboard', 'orders', 'map'],
+  '公交公司': ['dashboard', 'map', 'devices'],
+};
 const state = { page:'dashboard', navigationId:0, alerts:[], devices:[], orders:[], dashboard:null, orderPages:{ pending:1, processing:1, review:1, completed:1 }, orderFilters:{ pending:{ time:'', priority:'' }, processing:{ time:'', priority:'' }, review:{ time:'', priority:'' }, completed:{ time:'', priority:'' } } };
 const dataCache = {
   dashboard:{ value:null, loadedAt:0, pending:null, ttl:120000 },
@@ -23,7 +29,6 @@ const profileButton = document.querySelector('#profile-button');
 const profileRoot = document.querySelector('#profile-root');
 const orderSummary = document.querySelector('#order-summary');
 const onlineDeviceCount = document.querySelector('#online-device-count');
-const PROFILE_KEY = 'traffic-user-profile';
 let deviceRefreshTimer = null;
 let deviceRefreshInFlight = false;
 let lastDeviceRefresh = null;
@@ -49,11 +54,20 @@ function startDeviceAutoRefresh() {
   }, 5000);
 }
 
-function getProfile() {
-  const fallback = { name:'王珊', avatar:'王' };
-  try { return { ...fallback, ...JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}') }; } catch { return fallback; }
+function getSession() {
+  try { return JSON.parse(sessionStorage.getItem('traffic-auth') || '{}') || {}; } catch { return {}; }
 }
-function profileAvatar(profile = getProfile()) { return (profile.avatar || profile.name || '用户').trim().slice(0, 2) || '用户'; }
+function getProfile() {
+  const session = getSession();
+  return { name: String(session.name || '用户').trim(), department: String(session.department || '未设置部门').trim() };
+}
+function profileAvatar(profile = getProfile()) {
+  return Array.from((profile.name || '用户').trim()).at(-1) || '用';
+}
+function availableNavItems() {
+  const allowedPages = DEPARTMENT_NAVIGATION[getProfile().department] || ['dashboard'];
+  return navItems.filter(([key]) => allowedPages.includes(key));
+}
 function applyProfile() { profileButton.textContent = profileAvatar(); profileButton.title = `${getProfile().name}的基础设置`; }
 function updateClock() {
   const now = new Date();
@@ -64,26 +78,22 @@ function updateClock() {
 function closeProfile() { profileRoot.innerHTML = ''; }
 function openProfile() {
   const profile = getProfile();
-  profileRoot.innerHTML = `<div class="profile-scrim" data-close-profile></div><section class="profile-popover" aria-label="个人基础设置"><div class="profile-popover-head"><div class="profile-preview">${esc(profileAvatar(profile))}</div><div><b>${esc(profile.name)}</b><small>个人基础设置</small></div><button class="close-profile" type="button" aria-label="关闭" data-close-profile>×</button></div><label>用户名称<input id="profile-name" maxlength="16" value="${esc(profile.name)}" placeholder="请输入用户名称" /></label><label>头像文字<input id="profile-avatar" maxlength="2" value="${esc(profile.avatar)}" placeholder="最多两个字符" /></label><button class="primary-btn" id="save-profile" type="button">保存设置</button><button class="logout-btn" id="logout-button" type="button">退出登录</button></section>`;
+  profileRoot.innerHTML = `<div class="profile-scrim" data-close-profile></div><section class="profile-popover" aria-label="个人基础设置"><div class="profile-popover-head"><div class="profile-preview">${esc(profileAvatar(profile))}</div><div><b>${esc(profile.name)}</b><small>个人基础设置</small></div><button class="close-profile" type="button" aria-label="关闭" data-close-profile>×</button></div><label>用户名称<input id="profile-name" value="${esc(profile.name)}" readonly /></label><label>所属部门<input id="profile-department" value="${esc(profile.department)}" readonly /></label><p class="profile-source">姓名、头像和所属部门均由登录账号对应的数据库资料自动获取。</p><button class="logout-btn" id="logout-button" type="button">退出登录</button></section>`;
   profileRoot.querySelectorAll('[data-close-profile]').forEach(button => button.addEventListener('click', closeProfile));
-  profileRoot.querySelector('#save-profile').addEventListener('click', () => {
-    const name = profileRoot.querySelector('#profile-name').value.trim() || '未命名用户';
-    const avatar = profileRoot.querySelector('#profile-avatar').value.trim() || name.slice(0, 2);
-    localStorage.setItem(PROFILE_KEY, JSON.stringify({ name, avatar }));
-    applyProfile(); closeProfile(); showToast('个人设置已保存');
-  });
   profileRoot.querySelector('#logout-button').addEventListener('click', () => { sessionStorage.removeItem('traffic-auth'); window.location.reload(); });
 }
 
 function renderNav() {
-  nav.innerHTML = navItems.map(([key, icon, label]) => `<button class="nav-item ${state.page === key ? 'active' : ''}" data-page="${key}"><span>${icon}</span>${label}</button>`).join('');
+  nav.innerHTML = availableNavItems().map(([key, icon, label]) => `<button class="nav-item ${state.page === key ? 'active' : ''}" data-page="${key}"><span>${icon}</span>${label}</button>`).join('');
   nav.querySelectorAll('button').forEach(button => button.addEventListener('click', () => go(button.dataset.page)));
 }
 async function go(page) {
+  const availableItems = availableNavItems();
+  if (!availableItems.some(([key]) => key === page)) page = 'dashboard';
   const navigationId = ++state.navigationId;
   if (page !== 'devices') stopDeviceAutoRefresh();
   if (page !== 'map' && activeMapController) { activeMapController.destroy(); activeMapController = null; }
-  state.page = page; setCriticalAlarm(false); document.body.classList.remove('orders-page','devices-page'); orderSummary.innerHTML = ''; const item = navItems.find(i => i[0] === page); title.textContent = item[2]; kicker.textContent = ''; renderNav();
+  state.page = page; setCriticalAlarm(false); document.body.classList.remove('orders-page','devices-page'); orderSummary.innerHTML = ''; const item = availableItems.find(i => i[0] === page); title.textContent = item[2]; kicker.textContent = ''; renderNav();
   pageContent.innerHTML = `<div class="loading">正在加载数据…</div>`;
   const renderers = { dashboard:renderDashboard, alerts:renderAlerts, orders:renderOrders, map:renderMap, devices:renderDevices, settings:renderSettings };
   try {

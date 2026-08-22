@@ -1,6 +1,7 @@
 {
   "appId": "com.zhixunyun.traffic",
   "appName": "智巡云",
+  "backgroundColor": "#11243E",
   "webDir": "www",
   "server": {
     "cleartext": true,
