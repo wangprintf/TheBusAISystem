@@ -24,6 +24,14 @@ function setNativeSystemBar(mode) {
   window.AppSystemBar?.setMode(mode);
 }
 
+function syncNativeInsets() {
+  const raw = window.AppSystemBar?.getInsets?.();
+  if (!raw) return;
+  const [top, bottom] = String(raw).split(',').map(value => Number(value));
+  if (Number.isFinite(top)) document.documentElement.style.setProperty('--native-status-bar-inset', `${top}px`);
+  if (Number.isFinite(bottom)) document.documentElement.style.setProperty('--native-navigation-bar-inset', `${bottom}px`);
+}
+
 function firstText(source, keys) {
   for (const key of keys) {
     const value = source?.[key];
@@ -215,6 +223,8 @@ function renderLogin() {
 }
 
 setNativeSystemBar('login');
+syncNativeInsets();
+window.addEventListener('resize', syncNativeInsets);
 renderStartup(() => {
   renderLogin();
 });

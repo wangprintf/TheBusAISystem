@@ -2,6 +2,7 @@ node_modules/
 dist/
 build/
 www/
+web-dist/
 .env
 .env.*
 !.env.example

@@ -5,7 +5,8 @@
   "description": "智巡云 Android 比赛演示应用",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build-web.mjs",
+    "build": "node scripts/build-app.mjs",
+    "build:web": "node scripts/build-web.mjs",
     "android:sync": "npm run build && npx cap sync android",
     "android:open": "npx cap open android"
   },

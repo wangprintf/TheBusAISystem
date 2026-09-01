@@ -4,11 +4,22 @@
   font:inherit;
   transition:transform .18s ease,box-shadow .18s ease;
 }
-/* After login, the page itself provides the white background behind Android's
-   transparent edge-to-edge status bar. The login screen is not app-ready. */
+/* Android uses an edge-to-edge WebView. Keep the app surface consistent under
+   the transparent status bar and expose native insets to the phone layout. */
 html:has(body.app-ready),
-body.app-ready{background:#fff}
+body.app-ready{background:#f5f7fb}
 body.app-ready .app-shell{background:#f5f7fb}
+body.app-ready::after{
+  content:'';
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  height:var(--native-navigation-bar-inset, env(safe-area-inset-bottom, 0px));
+  background:#121b2c;
+  pointer-events:none;
+  z-index:1;
+}
 .avatar:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(52,120,246,.2)}
 .devices-page .page-heading .eyebrow{display:none}.metric-card-simple{display:flex;flex-direction:column;justify-content:space-between}.metric-card-simple strong{margin-bottom:0}.metrics{grid-template-columns:repeat(3,1fr)}
 .ghost-btn{font-variant-numeric:tabular-nums;min-width:208px}
@@ -27,8 +38,12 @@ body.app-ready .app-shell{background:#f5f7fb}
 /* Phone layout: replace the desktop sidebar with a reachable bottom navigation. */
 @media(max-width:700px){
   body{font-size:14px;padding-bottom:72px}
+  body.app-ready{
+    padding-top:var(--native-status-bar-inset, env(safe-area-inset-top, 0px));
+    padding-bottom:calc(72px + var(--native-navigation-bar-inset, env(safe-area-inset-bottom, 0px)));
+  }
   .app-shell{display:block;height:auto;min-height:100vh;overflow:visible}
-  .sidebar{position:fixed;inset:auto 0 0;width:100%;height:64px;padding:4px 5px;z-index:30;overflow:visible;box-shadow:0 -4px 18px rgba(9,21,41,.18)}
+  .sidebar{position:fixed;inset:auto 0 var(--native-navigation-bar-inset, env(safe-area-inset-bottom, 0px));width:100%;height:64px;padding:4px 5px;z-index:30;overflow:visible;box-shadow:0 -4px 18px rgba(9,21,41,.18)}
   .brand,.sidebar-footer{display:none}
   .nav{height:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:1px}
   .nav-item,.nav-item.active{min-width:0;justify-content:center;flex-direction:column;gap:2px;padding:5px 1px;font-size:10px;color:#c6d1e1}

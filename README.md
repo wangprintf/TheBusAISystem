@@ -4,11 +4,13 @@
 
 ## 运行
 
-直接用浏览器打开 `index.html`，或在项目目录执行：
+网页端代码位于 `web/`，可直接打开 `web/index.html`，或在项目目录执行：
 
 ```powershell
-npx serve .
+npx serve web
 ```
+
+Android App 代码位于 `app/`，运行 `npm run android:sync` 时会将其构建到 Capacitor 的 `www/` 目录。两端的接口和数据模型可以继续分别维护，互不覆盖。
 
 ## 对接后端
 

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>公交车 AI 前视系统</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./alert-styles.css" />
+    <link rel="stylesheet" href="./login.css" />
+    <link rel="stylesheet" href="./login-custom.css" />
+    <link rel="stylesheet" href="./app-custom.css" />
+    <link rel="stylesheet" href="./map-custom.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand"><span class="brand-mark">◈</span><span>智巡云</span></div>
+        <nav id="main-nav" class="nav" aria-label="主导航"></nav>
+        <div class="sidebar-footer"><span class="status-dot"></span> <span id="online-device-count">--</span> 台设备在线</div>
+      </aside>
+      <main class="main-content">
+        <header class="topbar">
+          <div class="page-heading"><p class="eyebrow" id="page-kicker">运营中心</p><h1 id="page-title">数据总览</h1></div>
+          <section id="order-summary" class="order-status-overview" aria-label="工单状态概览"></section>
+          <div class="top-actions"><button class="ghost-btn" id="date-button" type="button" aria-label="当前时间"></button><button class="avatar" id="profile-button" type="button" aria-label="个人基础设置">王</button></div>
+        </header>
+        <section id="page-content"></section>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status"></div>
+    <div id="drawer-root"></div>
+    <div id="profile-root"></div>
+    <script type="module" src="./js/login.js"></script>
+  </body>
+</html>
