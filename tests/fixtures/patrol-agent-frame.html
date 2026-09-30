@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>本地 Dify 嵌入测试</title>
+<style>body{margin:0;padding:24px;box-sizing:border-box;background:#f8fafc;color:#253749;font:14px/1.6 sans-serif}label{display:block;margin:20px 0}textarea{box-sizing:border-box;width:100%;padding:12px;border:1px solid #abc;border-radius:8px}small{color:#64748b}</style>
+<h2>本地嵌入测试</h2><p>此页面只验证 iframe 加载与会话保留，不连接 Dify 或业务数据库。</p>
+<label>会话保留测试<textarea placeholder="输入内容后收起、重开助手"></textarea></label>
+<small>页面加载时间：<time id="loaded-at"></time></small>
+<script>document.querySelector('time').textContent = new Date().toISOString();</script>
+</html>

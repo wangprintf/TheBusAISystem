@@ -1,0 +1,92 @@
+/* The queue and selected order share one workspace, with independent scrolling. */
+body.app-ready .orders-workspace{display:flex;flex-direction:column;overflow:hidden}
+body.app-ready .orders-workspace .workspace-head{position:static;flex:none;padding:15px 22px}
+body.app-ready .orders-workspace .workspace-head h2{font-size:22px}
+body.app-ready .orders-workspace .workspace-content{flex:1;min-height:0;padding:16px 20px 20px;overflow:hidden}
+.order-center{--queue-line:rgba(64,139,176,.26);display:grid;grid-template-columns:minmax(360px,31%) minmax(0,1fr);gap:16px;height:100%;min-height:0;color:#e2f5ff}
+body.orders-page #page-content{height:calc(100dvh - 128px);min-height:500px}
+.order-queue,.order-center-detail{min-width:0;min-height:0;border:1px solid var(--queue-line);border-radius:10px;background:linear-gradient(155deg,#0c253b,#071a2b);overflow:hidden}
+.order-queue{display:flex;flex-direction:column}
+.order-queue-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 16px 12px}
+.order-queue-head h3{margin:0;color:#e3f5ff;font-size:17px;letter-spacing:.5px}
+.order-queue-head p{margin:6px 0 0;color:#7c9bad;font-size:11px}
+.order-queue-count{flex:none;border:1px solid var(--queue-line);border-radius:20px;padding:5px 10px;font-size:12px;color:#b5d9e9;background:#0a2032}
+.order-queue-tools{display:grid;grid-template-columns:minmax(0,1fr) 118px;gap:8px;padding:0 14px 12px}
+.order-queue input,.order-queue select{min-width:0;width:100%;height:32px;border:1px solid rgba(64,139,176,.35);border-radius:5px;background:#0a2033;color:#cce5f0;font:inherit;font-size:12px;padding:0 8px;color-scheme:dark}
+.order-queue input::placeholder{color:#6e93a9}
+.order-queue input:focus-visible,.order-queue select:focus-visible,.order-queue button:focus-visible{outline:2px solid #51d7ef;outline-offset:-2px}
+.order-queue-status{display:flex;gap:4px;padding:0 14px 12px;flex-wrap:wrap}
+.order-queue-status button{display:flex;align-items:center;gap:4px;flex:1;justify-content:center;white-space:nowrap;border:1px solid transparent;border-radius:4px;padding:6px 3px;background:#102d43;color:#8eafc1;font:inherit;font-size:11px;cursor:pointer}
+.order-queue-status button b{font-weight:500;font-size:10px;opacity:.8}
+.order-queue-status button[aria-pressed="true"]{color:#71e5f5;border-color:#287897;background:#123e53}
+.order-queue-filters{display:flex;align-items:center;gap:8px;padding:0 14px 12px}
+.order-queue-filters label{display:flex;align-items:center;gap:5px;min-width:0;color:#86a9bc;font-size:11px;white-space:nowrap}
+.order-queue-filters label:first-child{flex:1}
+.order-queue-filters input{min-width:114px}
+.order-queue-filters select{width:84px}
+.order-queue-filters button{border:0;padding:4px 0 4px 2px;background:none;color:#69cfe6;font:inherit;font-size:11px;cursor:pointer}
+.order-queue-columns,.order-queue-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 77px 32px 50px;gap:7px;align-items:center;text-align:left}
+.order-queue-columns{padding:11px 14px;background:#0a2033;border-block:1px solid var(--queue-line);color:#bcd8e6;font-size:12px}
+.order-queue-list{flex:1;min-height:0;overflow:auto;scrollbar-width:thin;scrollbar-color:#287c9d #081b2c;overscroll-behavior:contain}
+.order-queue-row{position:relative;width:100%;min-height:48px;padding:10px 13px;border:0;border-left:3px solid transparent;border-bottom:1px solid rgba(70,112,145,.19);background:rgba(16,43,64,.5);color:#c2dbe7;font:inherit;font-size:11px;cursor:pointer}
+.order-queue-row>span,.order-queue-row>time{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.order-queue-row .queue-event{font-weight:600;color:#d8eaf4}
+.order-queue-row time{color:#9bb6c8;font-variant-numeric:tabular-nums;font-size:10px}
+.order-queue-row.is-urgent{border-left-color:#ff5b65;background:rgba(255,91,101,.1)}
+.order-queue-row:hover{background:rgba(37,107,137,.3)}
+.order-queue-row[aria-pressed="true"]{border-left-color:#4be0f6;background:linear-gradient(90deg,rgba(28,128,164,.38),rgba(17,68,98,.6));box-shadow:inset 0 1px rgba(65,205,240,.26),inset 0 -1px rgba(65,205,240,.26)}
+.order-queue-row[aria-pressed="true"] .queue-event{color:#8beefa}
+.queue-priority,.queue-stage{border:1px solid currentColor;border-radius:20px;padding:3px 2px;text-align:center;font-size:10px;line-height:1.2}
+.queue-priority.priority-1{color:#ff5b65;background:rgba(255,91,101,.12);border-color:rgba(255,91,101,.4)}
+.queue-priority.priority-2{color:#ffd05b;background:rgba(255,208,91,.1);border-color:rgba(255,208,91,.4)}
+.queue-priority.priority-3{color:#68d8c2;border-color:#2b6b68}
+.queue-stage.stage-0{color:#f19daf;background:rgba(174,65,90,.16);border-color:rgba(235,124,149,.38)}
+.queue-stage.stage-1{color:#71bcfb;border-color:#285b80}
+.queue-stage.stage-2{color:#bb9cfa;border-color:#675095}
+.queue-stage.stage-3{color:#68d8b2;border-color:#2c735f}
+.order-queue-footer{display:flex;justify-content:space-between;gap:8px;flex:none;padding:12px 14px;border-top:1px solid var(--queue-line);color:#779bad;font-size:10px}
+.order-queue-empty{padding:36px 12px;text-align:center;color:#87aabd;font-size:13px}
+.order-center-detail{overflow:auto;scrollbar-width:thin;scrollbar-color:#287c9d #081b2c;overscroll-behavior:contain;container-type:inline-size;background:#071b2b}
+.order-detail-inline{min-height:100%;display:flex;flex-direction:column}
+body.app-ready .order-detail-inline .order-detail-head{padding:20px 22px}
+.order-detail-inline .order-detail-head h2{font-size:22px;overflow-wrap:anywhere}
+.order-detail-inline .order-detail-summary{grid-template-columns:1.4fr 1.05fr repeat(3,minmax(68px,.65fr));gap:8px;padding:16px 20px}
+.order-detail-inline .order-detail-summary>div{padding:10px}
+.order-detail-inline .order-detail-summary b{font-size:12px;white-space:normal;overflow-wrap:anywhere}
+.order-detail-inline .order-detail-summary small{font-size:11px}
+.order-detail-inline .order-detail-media{grid-template-columns:repeat(2,minmax(0,1fr));padding:18px 20px;gap:14px}
+.order-detail-inline .media-panel{display:flex;flex-direction:column}
+.order-detail-inline .media-panel-head{padding:12px 14px}
+.order-detail-inline .media-panel-head h3{font-size:14px}
+.order-detail-inline .media-stage,.order-detail-inline .media-empty{height:clamp(190px,27vh,320px)}
+.order-detail-inline .media-empty{font-size:12px}
+.order-detail-inline .media-pager{padding:9px}
+.order-detail-inline .finish-upload{padding:12px}
+.order-detail-inline .finish-upload-toolbar{flex-wrap:wrap}
+.order-detail-inline .order-detail-notes{grid-template-columns:repeat(2,minmax(0,1fr));margin:0 20px;border-color:var(--queue-line);font-size:12px;overflow-wrap:anywhere}
+.order-detail-inline .order-detail-actions{margin-top:auto;padding:16px 20px;flex-wrap:wrap}
+.order-detail-inline .order-detail-actions:empty{display:none}
+.order-center-empty{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center}
+.order-center-empty>span{font-size:20px;color:#c9e6f3}
+.order-center-empty p{color:#7e9fb3;font-size:13px;line-height:1.7}
+@container (max-width:670px){
+  .order-detail-inline .order-detail-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .order-detail-inline .order-detail-summary>div:first-child{grid-column:span 2}
+  .order-detail-inline .order-detail-head h2{font-size:19px}
+  .order-detail-inline .order-detail-media{gap:10px;padding:14px}
+}
+@media(max-width:1000px){
+  .order-center{grid-template-columns:350px minmax(0,1fr);gap:10px}
+  body.app-ready .orders-workspace .workspace-content{padding:12px}
+}
+@media(max-width:760px){
+  body.app-ready .orders-workspace{inset:8px}
+  body.app-ready .orders-workspace .workspace-head{padding:12px 14px}
+  body.app-ready .orders-workspace .workspace-content{overflow:auto;padding:10px}
+  .order-center{grid-template-columns:minmax(0,1fr);height:auto;gap:12px}
+  .order-queue{height:380px}
+  .order-center-detail{overflow:visible}
+  body.orders-page #page-content{height:auto}
+  .order-detail-inline .order-detail-media{grid-template-columns:minmax(0,1fr)}
+  .order-detail-inline .order-detail-notes{grid-template-columns:minmax(0,1fr)}
+}

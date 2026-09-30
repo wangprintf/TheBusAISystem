@@ -1,12 +1,14 @@
 node_modules/
 dist/
 build/
-www/
 web-dist/
+web/assets/assets/
 .env
 .env.*
 !.env.example
+web/js/cos-direct-config.js
 *.log
 .DS_Store
 backups/
 current-phone.png
+dify-runtime/

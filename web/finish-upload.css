@@ -1,0 +1,23 @@
+.finish-upload{padding:14px 16px;border-top:1px solid #28536b;background:#0b2637}
+.finish-upload-unavailable{margin:0;padding:11px 12px;border:1px dashed #3a6072;border-radius:6px;color:#8ba8b8;font-size:12px;line-height:1.6;text-align:center;background:#0a2231}
+.finish-upload-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.finish-upload-toolbar button{padding:8px 12px;font-size:12px;cursor:pointer}
+.finish-upload-toolbar .outline-btn{border:1px solid #3a809a;border-radius:6px;background:#123b50;color:#8de5f8}
+.finish-upload-toolbar .outline-btn:hover{background:#1a5066;border-color:#5ebbd3}
+.finish-upload-toolbar .primary-btn{border:1px solid #2694b6;border-radius:6px;background:#087999;color:#e8fbff}
+.finish-upload-toolbar button:disabled{opacity:.55;cursor:wait}
+.finish-upload-hint{margin:10px 0 0;color:#86a7bc;font-size:11px;line-height:1.6}
+.finish-upload-message{margin:9px 0 0;color:#53dcb5;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.finish-upload-message:empty{display:none}
+.finish-upload-message.is-error,.finish-upload-row.is-error [data-status]{color:#ffb373}
+.finish-upload-list{max-height:200px;overflow:auto;scrollbar-width:thin}
+.finish-upload-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #24485e}
+.finish-upload-row>div{flex:1;min-width:0}
+.finish-upload-row b{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#d3ebf7;font-size:12px;font-weight:500}
+.finish-upload-row [data-status]{display:block;margin:5px 0;color:#7eb4d0;font-size:11px;overflow-wrap:anywhere}
+.finish-upload-row progress{display:block;width:100%;height:5px;accent-color:#20c9e9;border:0;border-radius:3px;overflow:hidden}
+.finish-upload-row progress::-webkit-progress-bar{background:#183e54}
+.finish-upload-row progress::-webkit-progress-value{background:linear-gradient(90deg,#20c9e9,#36dfaf)}
+.finish-upload-row>button{border:0;background:transparent;color:#91b8c9;font-size:20px;cursor:pointer}
+.media-panel [data-media-gallery]{flex:1;min-height:0}
+@media(max-width:600px){.finish-upload-toolbar{flex-wrap:wrap}.finish-upload{padding:12px}}

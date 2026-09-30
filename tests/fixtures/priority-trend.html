@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>告警趋势 · 柱状图验证</title>
+<link rel="stylesheet" href="/web/styles.css">
+<link rel="stylesheet" href="/web/app-custom.css">
+<style>
+  html:has(body.app-ready),body.dashboard-page{min-height:100vh;overflow:auto;background:#06101d}
+  .chart-fixture{padding:32px;max-width:1120px;margin:auto}
+  .fixture-panels{display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;margin-top:24px}
+  .fixture-wide{width:493px;max-width:100%}.fixture-narrow{width:285px;max-width:100%}
+  .fixture-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+  .fixture-actions button{background:#113b55;border:1px solid #367798;border-radius:4px;padding:8px 12px;color:#d4f3ff;cursor:pointer}
+  #fixture-result{margin-top:16px;color:#83dac0}
+  .fixture-caption{margin-top:8px;color:#85a6b9}
+</style>
+<body class="app-ready dashboard-page">
+<main class="chart-fixture">
+  <h1>告警趋势 · 柱状图验证</h1>
+  <p class="fixture-caption">以下为测试数据，用于检查优先级配色、提示框与局部刷新。</p>
+  <div class="fixture-panels">
+    <article class="dash-panel trend-panel fixture-wide"><div class="dash-panel-head"><div><span class="panel-code">02 / TRAFFIC ALERTS</span><h2>告警趋势</h2></div><span class="panel-live-note">工单数据实时联动</span></div><div class="dash-chart-labels"><span>近 7 日事件量</span><b data-priority-peak></b></div><div id="chart" class="priority-trend"></div></article>
+    <article class="dash-panel trend-panel fixture-narrow"><div class="dash-panel-head"><div><span class="panel-code">02 / TRAFFIC ALERTS</span><h2>告警趋势</h2></div></div><div class="dash-chart-labels"><span>近 7 日事件量</span><b data-priority-peak></b></div><div id="compact-chart" class="priority-trend"></div></article>
+  </div>
+  <div class="fixture-actions"><button id="refresh">更新测试数据</button><button id="delayed-refresh">5 秒后更新</button><button id="empty">空数据</button><button id="restore">恢复测试数据</button></div>
+  <p id="fixture-result" role="status">等待交互验证</p>
+</main>
+<script type="module">
+  import {buildPriorityTrend, mountPriorityTrend} from '/web/js/priority-trend.js';
+  const date = new Date(2026,8,13,12);
+  const mixes = [[0,0,2],[1,0,0],[3,2,1],[2,1,0],[0,0,0],[10,2,1],[5,2,1]];
+  const levels = ['高','中','低'];
+  const rows = mixes.flatMap((counts,index) => counts.flatMap((count,level) => Array.from({length:count}, () => ({report_time:`2026-09-${String(7+index).padStart(2,'0')} 11:00:00`,priority_level:levels[level]}))));
+  let days = buildPriorityTrend(rows,date);
+  const root = document.querySelector('#chart');
+  const chart = mountPriorityTrend(root, days);
+  const compact = mountPriorityTrend(document.querySelector('#compact-chart'), days);
+  const nodes = [...root.querySelectorAll('button')];
+  function update(next) {
+    chart.update(next);compact.update(next);
+    const same = nodes.every((node,index) => node === root.querySelectorAll('button')[index]);
+    document.querySelector('#fixture-result').textContent = `更新完成；7 根柱节点保持：${same ? '是' : '否'}；峰值 ${Math.max(...next.map(day=>day.total))} 条`;
+  }
+  function refresh(){ days[5].counts.high += 2;days[5].total += 2;update(days); }
+  document.querySelector('#refresh').onclick=refresh;
+  document.querySelector('#delayed-refresh').onclick=()=>{document.querySelector('#fixture-result').textContent='5 秒后更新，请将鼠标移到 9/12 的柱子上';setTimeout(refresh,5000)};
+  document.querySelector('#empty').onclick=()=>update(buildPriorityTrend([],date));
+  document.querySelector('#restore').onclick=()=>{days=buildPriorityTrend(rows,date);update(days)};
+</script>
+</body>
+</html>

@@ -1,6 +1,8 @@
 .tencent-map {
   position: absolute;
   inset: 0;
+  z-index: 0;
+  isolation: isolate;
   background: #eaf0e8;
 }
 
@@ -129,6 +131,28 @@
   color: #8490a3;
   text-align: center;
 }
+
+.personnel-map-control{position:absolute;z-index:5;left:16px;bottom:32px;max-width:calc(100% - 32px);font-family:"Microsoft YaHei",Arial,sans-serif}
+.personnel-map-locate{display:flex;align-items:center;gap:8px;min-height:42px;padding:6px 12px 6px 7px;border:1px solid #81cfff;border-radius:8px;background:rgba(8,34,52,.94);color:#d9f5ff;box-shadow:0 3px 14px #00132240;font:600 12px "Microsoft YaHei",Arial,sans-serif;cursor:pointer}
+.personnel-map-locate:hover{border-color:#b8efff;background:#143e58}
+.personnel-map-locate:focus-visible,.personnel-map-details button:focus-visible{outline:2px solid #52dfff;outline-offset:3px}
+.personnel-map-locate:disabled{cursor:default;opacity:.8}
+.personnel-map-avatar{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:50%;background:linear-gradient(145deg,#dce9ff,#c6dcff);color:#3478f6;font-size:15px;font-weight:700}
+.personnel-map-details{display:grid;gap:7px;width:270px;max-width:100%;margin-bottom:10px;padding:13px 14px;border:1px solid #77c8f5;border-radius:8px;background:rgba(8,34,52,.97);color:#b7d5e6;box-shadow:0 6px 22px #00132250;font-size:11px;line-height:1.6;overflow-wrap:anywhere}
+.personnel-map-details[hidden]{display:none}
+.personnel-map-details header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.personnel-map-details strong{color:#e5f7ff;font-size:13px}
+.personnel-map-details button{flex:none;border:0;background:transparent;color:#b7d5e6;font-size:22px;cursor:pointer;padding:0 3px;line-height:1}
+.personnel-map-details [hidden]{display:none!important}
+.personnel-map-details header strong{flex:1;min-width:0}
+.personnel-map-list{display:grid;max-height:min(220px,35vh);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#416678 transparent}
+.personnel-map-details .personnel-map-row{display:flex;align-items:center;gap:9px;padding:9px 4px;border-bottom:1px solid #41667855;text-align:left;font:12px/1.5 "Microsoft YaHei",Arial,sans-serif}
+.personnel-map-details .personnel-map-row:hover{background:#23465a}
+.personnel-map-row>span:last-child{min-width:0}
+.personnel-map-row b,.personnel-map-row small{display:block;overflow-wrap:anywhere}
+.personnel-map-row b{color:#e5f7ff;font-weight:500}
+.personnel-map-row small{color:#96b7ca;font-size:10px;margin-top:2px}
+.personnel-map-person{display:grid;gap:7px}
 
 /* Tencent Maps controls must remain behind every application modal. */
 #drawer-root .scrim {

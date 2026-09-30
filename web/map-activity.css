@@ -1,0 +1,20 @@
+/* The map fills the central column after removing the event trend panel. */
+body.dashboard-page .map-panel-dash{display:flex;flex-direction:column;min-height:0;border:0;border-radius:0;box-shadow:none}
+body.dashboard-page .map-panel-dash::before,body.dashboard-page .map-panel-dash::after{display:none}
+body.dashboard-page .map-panel-dash>.dash-panel-head{flex:none}
+body.dashboard-page .map-panel-dash .dashboard-map-host{flex:1;height:auto;min-height:0;border:0}
+.map-heading-actions{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+body.dashboard-page .map-heading-actions .dash-link{font-size:10px;padding:0}
+body.dashboard-page .map-legend-dash i.cluster{border-radius:50%;background:#4087ff}
+body.dashboard-page .map-legend-dash i.red{margin-left:7px;background:#ff5b65}
+body.dashboard-page .dash-center{grid-template-rows:minmax(0,1fr)}
+@media(min-width:901px){
+  body.dashboard-page .dashboard-grid{grid-template-columns:minmax(240px,1.03fr) minmax(390px,1.95fr) minmax(240px,1.03fr)}
+}
+@media(max-width:900px){
+  body.dashboard-page .dash-center{grid-template-rows:minmax(540px,70vh)}
+}
+@media(max-width:520px){
+  .map-heading-actions{max-width:52%}
+  .map-heading-actions .map-legend-dash{white-space:normal;flex-wrap:wrap;justify-content:flex-end}
+}
