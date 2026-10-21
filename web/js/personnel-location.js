@@ -1,6 +1,8 @@
 import { hasMapCoordinates } from './map-activity.js';
 import { PERSONNEL_NAMES } from './personnel-names.js';
 
+const EXCLUDED_PERSONNEL_IDS = new Set(['100000']);
+
 export function avatarText(profile = {}) {
   return Array.from(String(profile.name || '用户').trim()).at(-1) || '用';
 }
@@ -8,7 +10,7 @@ export function avatarText(profile = {}) {
 export function personnelLocations(rows, session = {}) {
   return rows.flatMap(row => {
     const accountId = String(row?.id ?? '').trim();
-    if (!accountId || !hasMapCoordinates(row)) return [];
+    if (!accountId || EXCLUDED_PERSONNEL_IDS.has(accountId) || !hasMapCoordinates(row)) return [];
     const isCurrent = accountId === String(session.accountId ?? '').trim();
     const name = [row.name, isCurrent ? session.name : '', PERSONNEL_NAMES[accountId]]
       .map(value => String(value || '').trim()).find(Boolean) || '';
@@ -27,11 +29,9 @@ export function personnelLocations(rows, session = {}) {
 
 export function personnelPinSource(person) {
   const name = String(person.name || '未登记姓名');
-  const nameLength = Array.from(name).length;
-  const fontSize = nameLength <= 2 ? 18 : nameLength === 3 ? 13 : 10;
-  const glyph = name.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[char]));
-  const outline = person.status === 'offline' ? '#8598ae' : '#3478f6';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="82" viewBox="0 0 64 82"><defs><linearGradient id="avatar" x2="0" y2="1"><stop stop-color="#dce9ff"/><stop offset="1" stop-color="#c6dcff"/></linearGradient></defs><ellipse cx="32" cy="73" rx="17" ry="6" fill="#3478f6" fill-opacity=".15" stroke="${outline}" stroke-width="2"/><path d="M32 3C16.5 3 4 15.5 4 31c0 18 28 40 28 40s28-22 28-40C60 15.5 47.5 3 32 3Z" fill="#fff" stroke="${outline}" stroke-width="3"/><circle cx="32" cy="30" r="21" fill="url(#avatar)"/><text x="32" y="30" dy=".35em" text-anchor="middle" fill="#3478f6" font-family="Microsoft YaHei,Arial,sans-serif" font-size="${fontSize}"${nameLength >= 4 ? ' textLength="39" lengthAdjust="spacingAndGlyphs"' : ''} font-weight="700">${glyph}</text><circle cx="49" cy="47" r="5" fill="${person.status === 'online' ? '#22cfa0' : '#8598ae'}" stroke="#fff" stroke-width="2"/></svg>`;
+  const glyph = (name === '未登记姓名' ? '待' : avatarText({ name })).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[char]));
+  const outline = person.status === 'offline' ? '#8598ae' : '#60d9e6';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#12384d" stroke="${outline}" stroke-width="2"/><text x="15" y="15" dy=".35em" text-anchor="middle" fill="#e4faff" font-family="Microsoft YaHei,Arial,sans-serif" font-size="13" font-weight="700">${glyph}</text><circle cx="25" cy="25" r="3.5" fill="${person.status === 'online' ? '#22cfa0' : '#8598ae'}" stroke="#092032" stroke-width="1.5"/></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 

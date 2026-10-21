@@ -1,0 +1,103 @@
+/* Weather card is independent of page-specific business layouts. */
+body.app-ready { --weather-header-height:156px; }
+body.app-ready .topbar.main-navigation-header { grid-template-columns: minmax(150px,1fr) minmax(100px,.6fr) minmax(300px,1.4fr) minmax(100px,.6fr) 370px; grid-template-rows:40px 108px; height:var(--weather-header-height); gap:0 14px; padding-bottom:8px; }
+body.app-ready .main-navigation-header #patrol-agent-root,
+body.app-ready .main-navigation-header .home-btn { grid-area: 1 / 1 / 3 / 2; }
+body.app-ready .main-navigation-header .center-nav-orders { grid-area: 1 / 2 / 3 / 3; }
+body.app-ready .main-navigation-header .page-heading { grid-area: 1 / 3 / 3 / 4; }
+body.app-ready .main-navigation-header .center-nav-devices { grid-area: 1 / 4 / 3 / 5; }
+body.app-ready .main-navigation-header .top-actions { grid-area: 1 / 5; }
+body.app-ready .main-navigation-header #weather-root { grid-area: 2 / 5; }
+#weather-root { min-width:0; color:#d9f4ff; background:linear-gradient(135deg,#103148,#081d30); border:1px solid #27526a; border-radius:10px; padding:6px 10px; }
+.weather-heading { display:flex; justify-content:space-between; gap:8px; font-size:12px; align-items:center; }
+.weather-heading button { background:transparent; border:0; color:#7de0f5; font:inherit; font-size:10px; cursor:pointer; padding:2px; }
+.weather-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:2px; min-height:60px; margin-top:3px; }
+.weather-day { display:grid; grid-template-columns:1fr; grid-template-rows:12px 22px 15px 11px; align-items:center; justify-items:center; gap:0; min-width:0; background:transparent; border:0; border-radius:5px; padding:0; font:10px/1.2 'Microsoft YaHei',sans-serif; color:#b9d1df; cursor:pointer; }
+.weather-day:hover { background:#1b4960; }
+.weather-icon { display:flex; width:22px; height:22px; color:#9ddfee; }
+.weather-icon svg,.weather-detail-hero>span svg { width:100%; height:100%; }
+.weather-day b { font-size:12px; color:#f0fbff; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.weather-day small { font-size:10px; font-weight:400; color:#a8c3d3; }
+.weather-rain { color:#91aebe; font-size:9px; }
+.weather-status { font-size:9px; line-height:11px; color:#9cb9c9; margin:2px 0 0; }
+.weather-dialog { width:min(620px,calc(100vw - 24px)); max-height:calc(100dvh - 32px); padding:0; color:#e4f7ff; border:1px solid #32718a; border-radius:16px; background:#0a2032; box-shadow:0 24px 100px #0008; overflow:auto; }
+.weather-dialog::backdrop { background:#020d1b99; }
+.weather-dialog-head { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:20px 24px; background:linear-gradient(110deg,#123d53,#0b2338); border-bottom:1px solid #295167; }
+.weather-dialog-head p { color:#8bbdd2; font-size:11px; margin:0 0 6px; }
+.weather-dialog-head h2 { font-size:20px; margin:0; }
+.weather-dialog button { cursor:pointer; font:inherit; color:inherit; }
+.weather-dialog-head button { background:transparent; border:0; font-size:28px; padding:0 6px; }
+.weather-dialog-content { padding:18px 24px; }
+.weather-date-picker { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; }
+.weather-date-picker button { display:grid; gap:5px; padding:9px 0; border:1px solid #2c4b60; border-radius:8px; background:#102c40; font-size:12px; }
+.weather-date-picker button span { font-size:11px; color:#a8c5d6; }
+.weather-date-picker button[aria-pressed="true"] { border-color:#58d9ef; background:#165066; }
+.weather-detail-hero { display:flex; justify-content:center; align-items:center; gap:24px; padding:24px 0; }
+.weather-detail-hero>span { display:flex; width:64px; height:64px; flex-shrink:0; color:#9ddfee; }
+.weather-detail-hero h3 { font-size:20px; margin:6px 0; }
+.weather-detail-hero b { font-size:32px; }
+.weather-detail-hero small { color:#a1bbcc; font-size:20px; }
+.weather-detail-hero p { color:#a0becf; font-size:11px; margin:4px 0; }
+.weather-facts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:0; }
+.weather-facts>div { background:#103044; padding:14px; border-radius:9px; }
+.weather-facts dt { color:#97bacb; font-size:12px; }
+.weather-facts dd { margin:8px 0 0; font-size:22px; }
+.weather-facts small { font-size:11px; margin-left:4px; color:#9ec3d3; }
+.weather-note { color:#92b1c4; font-size:11px; line-height:1.6; margin:16px 0 0; }
+.weather-dialog footer { display:flex; align-items:center; flex-wrap:wrap; gap:10px; padding:14px 24px; border-top:1px solid #284758; font-size:11px; color:#9cbdcf; }
+.weather-updated { flex:1; min-width:180px; }
+.weather-dialog footer button { border:1px solid #3783a0; background:#14425a; border-radius:6px; padding:7px 12px; }
+.weather-dialog footer button:disabled { opacity:.5; cursor:wait; }
+.weather-dialog a { color:#7dd3e7; }
+.weather-empty { text-align:center; color:#9cbdcf; padding:40px 0; }
+#weather-root button:focus-visible,.weather-dialog button:focus-visible { outline:2px solid #81e1f4; outline-offset:2px; }
+/* Fit the chart to its panel while reserving space for all seven date labels. */
+body.dashboard-page .trend-panel { display:flex; flex-direction:column; overflow-y:auto; }
+body.dashboard-page .trend-panel .dash-panel-head,
+body.dashboard-page .trend-panel .dash-chart-labels { flex-shrink:0; }
+body.dashboard-page .priority-trend { display:flex; flex-direction:column; flex:1; min-height:0; padding-bottom:27px; }
+body.dashboard-page .priority-legend { flex-shrink:0; }
+body.dashboard-page .priority-plot { flex:1 1 116px; min-height:48px; }
+body.dashboard-page :is(.trend-panel,.device-operations-panel),.weather-dialog { scrollbar-width:thin; scrollbar-color:#356078 #0a2032; color-scheme:dark; }
+body.dashboard-page :is(.trend-panel,.device-operations-panel)::-webkit-scrollbar,.weather-dialog::-webkit-scrollbar { width:5px; height:5px; }
+body.dashboard-page :is(.trend-panel,.device-operations-panel)::-webkit-scrollbar-track,.weather-dialog::-webkit-scrollbar-track { background:#0a2032; }
+body.dashboard-page :is(.trend-panel,.device-operations-panel)::-webkit-scrollbar-thumb,.weather-dialog::-webkit-scrollbar-thumb { background:#356078; border-radius:8px; }
+/* Account for the weather header when sizing the desktop dashboard. */
+@media(min-width:901px) {
+ body.dashboard-page .dashboard-screen { min-height:0; }
+ body.dashboard-page .dashboard-grid { height:calc(100dvh - var(--weather-header-height) - 82px); min-height:640px; }
+ body.dashboard-page .dash-left { grid-template-rows:max-content max-content minmax(0,1fr); }
+ body.dashboard-page .device-operations-panel { overflow-y:auto; }
+}
+@media(min-width:901px) and (max-height:950px) {
+ body.dashboard-page .dashboard-grid { height:calc(100dvh - var(--weather-header-height) - 70px); min-height:520px; }
+ body.dashboard-page .dash-left { grid-template-rows:max-content minmax(190px,1fr) minmax(0,1.1fr); }
+ body.dashboard-page .trend-panel { min-height:190px; }
+ body.dashboard-page .priority-plot { height:auto; flex-basis:66px; }
+}
+@media(max-width:1200px) {
+ body.app-ready { --weather-header-height:190px; }
+ body.app-ready .topbar.main-navigation-header { grid-template-columns:minmax(65px,1fr) 112px minmax(255px,1.5fr) 112px minmax(40px,1fr); grid-template-rows:64px 108px; gap:8px; }
+ body.app-ready .main-navigation-header #patrol-agent-root,body.app-ready .main-navigation-header .home-btn { grid-area:1 / 1; }
+ body.app-ready .main-navigation-header .center-nav-orders { grid-area:1 / 2; }
+ body.app-ready .main-navigation-header .page-heading { grid-area:1 / 3; }
+ body.app-ready .main-navigation-header .center-nav-devices { grid-area:1 / 4; }
+ body.app-ready .main-navigation-header .top-actions { grid-area:1 / 5; }
+ body.app-ready .main-navigation-header .ghost-btn { display:none; }
+ body.app-ready .main-navigation-header .patrol-agent-launcher { min-height:56px; padding-top:2px; padding-bottom:2px; }
+ body.app-ready .main-navigation-header .patrol-agent-orb { width:50px; height:50px; }
+ body.app-ready .main-navigation-header .patrol-agent-orb img { width:46px; height:46px; }
+ body.app-ready .main-navigation-header #weather-root { grid-area:2 / 1 / 3 / -1; }
+}
+@media(max-width:700px) {
+ body.app-ready .topbar.main-navigation-header { grid-template-columns:minmax(50px,1fr) minmax(185px,3fr) minmax(40px,1fr); grid-template-rows:68px 44px auto; height:auto; }
+ body.app-ready .main-navigation-header .page-heading { grid-area:1 / 2; }
+ body.app-ready .main-navigation-header .top-actions { grid-area:1 / 3; }
+ body.app-ready .main-navigation-header .center-nav-orders,body.app-ready .main-navigation-header .center-nav-devices { grid-area:2 / 1 / 3 / -1; }
+ body.app-ready .main-navigation-header #weather-root { grid-area:3 / 1 / 4 / -1; }
+ .weather-dialog-head,.weather-dialog-content { padding:16px; }
+ .weather-facts { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .weather-date-picker { gap:3px; }
+ .weather-date-picker button { font-size:11px; }
+}
+

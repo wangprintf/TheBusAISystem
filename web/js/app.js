@@ -1,4 +1,5 @@
 import { api } from './api.js';
+import { mountWeather } from './weather.js?v=20261018-weather-dialog';
 import { ALERT_STATUS, WORK_ORDER_STATUS } from './types.js';
 import { createTencentMap, reverseGeocode } from './tencent-map.js';
 import { buildPriorityTrend, mountPriorityTrend } from './priority-trend.js';
@@ -9,9 +10,12 @@ import { isProcessingStatus, mountFinishUpload } from './finish-upload.js';
 import { mountOrderCenter } from './order-center.js';
 import { mountPatrolAgent } from './patrol-agent.js';
 import { avatarText, mountPersonnelLocation } from './personnel-location.js';
+import { startOrderAssignmentSync } from './order-assignment-sync.js';
+import { mountRoadHealth } from './road-health.js';
 
 const navItems = [
   ['dashboard','▦','路网总览','路网健康巡检'], ['orders','▤','事件中心','事件闭环处置'],
+  ['health','◇','道路健康档案','附近事件与处置履历'],
   ['map','⌖','地图巡检','路网空间态势'], ['devices','▣','设备中心','车载设备健康'], ['settings','⚙','系统配置','规则与权限'],
 ];
 const state = { page:'dashboard', navigationId:0, alerts:[], devices:[], orders:[], dashboard:null };
@@ -27,7 +31,6 @@ const nav = document.querySelector('#main-nav');
 const title = document.querySelector('#page-title');
 const kicker = document.querySelector('#page-kicker');
 const dateButton = document.querySelector('#date-button');
-const homeButton = document.querySelector('#home-button');
 const profileButton = document.querySelector('#profile-button');
 const profileRoot = document.querySelector('#profile-root');
 const orderSummary = document.querySelector('#order-summary');
@@ -46,6 +49,7 @@ let dashboardOrdersController = null;
 let pullRefreshInFlight = false;
 let dataRevision = 0;
 let orderCenterController = null;
+let roadHealthController = null;
 
 function esc(value = '') { return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function badge(value, type = '') { return `<span class="badge ${type || value}"${['高', '中'].includes(value) ? ` data-priority="${value}"` : ''}>${esc(value)}</span>`; }
@@ -223,6 +227,8 @@ async function go(page) {
   if (orderCenterController?.isBusy()) { showToast('工单操作进行中，请稍后再离开'); return; }
   orderCenterController?.destroy();
   orderCenterController = null;
+  roadHealthController?.destroy();
+  roadHealthController = null;
   const availableItems = navItems;
   if (!availableItems.some(([key]) => key === page)) page = 'dashboard';
   const navigationId = ++state.navigationId;
@@ -233,9 +239,9 @@ async function go(page) {
   if (page !== 'dashboard' && dashboardTrendController) { dashboardTrendController.destroy(); dashboardTrendController = null; }
   if (page !== 'dashboard' && dashboardDeviceController) { dashboardDeviceController.destroy(); dashboardDeviceController = null; }
   if (page !== 'dashboard' && dashboardOrdersController) { dashboardOrdersController.destroy(); dashboardOrdersController = null; }
-  state.page = page; setCriticalAlarm(false); document.body.classList.remove('orders-page','devices-page','dashboard-page'); document.body.classList.toggle('dashboard-page', page === 'dashboard'); homeButton?.classList.toggle('visible', page !== 'dashboard'); orderSummary.innerHTML = ''; const item = availableItems.find(i => i[0] === page); title.textContent = page === 'dashboard' ? '路网健康巡检系统' : item[2]; kicker.textContent = page === 'dashboard' ? '路网运行 · 实时巡检指挥中心' : ''; renderNav();
+  state.page = page; setCriticalAlarm(false); document.body.classList.remove('orders-page','devices-page','dashboard-page'); document.body.classList.toggle('dashboard-page', page === 'dashboard'); orderSummary.innerHTML = ''; const item = availableItems.find(i => i[0] === page); title.textContent = page === 'dashboard' ? '路网健康巡检系统' : item[2]; kicker.textContent = page === 'dashboard' ? '路网运行 · 实时巡检指挥中心' : ''; renderNav();
   pageContent.innerHTML = `<div class="loading">正在加载数据…</div>`;
-  const renderers = { dashboard:renderDashboard, alerts:renderAlerts, orders:renderOrders, map:renderMap, devices:renderDevices, settings:renderSettings };
+  const renderers = { dashboard:renderDashboard, alerts:renderAlerts, orders:renderOrders, health:renderRoadHealth, map:renderMap, devices:renderDevices, settings:renderSettings };
   try {
     await renderers[page](navigationId);
   } catch (error) {
@@ -378,7 +384,7 @@ async function renderDashboard(navigationId = state.navigationId) {
       </aside>
       <main class="dash-column dash-center">
         <article class="dash-panel map-panel-dash">
-          <div class="dash-panel-head"><div><span class="panel-code">04 / SPATIAL SITUATION</span><h2>城市路网态势</h2></div><div class="map-heading-actions"><div class="map-legend-dash"><i class="cluster"></i>数字聚合 · 点击放大 <i class="red"></i>高风险点</div></div></div>
+          <div class="dash-panel-head"><div><span class="panel-code">04 / SPATIAL SITUATION</span><h2>城市路网态势</h2></div><div class="map-heading-actions"><div class="map-legend-dash"><i class="cluster"></i>数字聚合 · 点击放大 <i class="red"></i>高风险点</div><button type="button" class="dash-link dash-shortcut health-dashboard-entry" data-jump="health"><span class="dash-shortcut-label">道路健康档案 ↗</span></button></div></div>
           <div class="city-map dashboard-map-host"><div id="dashboard-tencent-map" class="tencent-map" aria-label="腾讯地图城市巡检态势"></div><div class="dashboard-map-overlay" aria-hidden="true"><div class="map-halo halo-a"></div><div class="map-halo halo-b"></div><div class="map-scanline"></div><div class="map-chip chip-top"><span>已定位事件</span><b data-dashboard-located-count>${locatedCount}</b><small>条</small></div><div class="map-chip chip-bottom"><span>待处置告警</span><b data-dashboard-pending-count>${pendingCount}</b><small>条</small></div></div></div>
         </article>
       </main>
@@ -434,7 +440,7 @@ function openDashboardSettings() {
 }
 
 function openCenterPage(kind) {
-  if (!['orders', 'devices'].includes(kind)) return;
+  if (!['dashboard', 'orders', 'devices', 'health'].includes(kind)) return;
   return go(kind);
 }
 
@@ -469,6 +475,26 @@ async function openAlert(id) {
   const openOrders = () => openCenterPage('orders');
   document.querySelectorAll('[data-review]').forEach(b=>b.addEventListener('click',async()=>{ await api.updateAlert(id,{status:b.dataset.review}); showToast(b.dataset.review==='valid'?'已确认有效告警':'已标记为误报'); close(); openOrders(); }));
   document.querySelector('#create-order').addEventListener('click',async()=>{ await api.createWorkOrder({title:`处置${alert.location}${alert.type}`,sourceAlertId:alert.id,location:alert.location}); await api.updateAlert(id,{status:'dispatched'}); showToast('工单已创建，等待指派'); close(); openOrders(); });
+}
+
+async function renderRoadHealth(navigationId = state.navigationId) {
+  await getOrdersData();
+  if (!isCurrentNavigation('health', navigationId)) return;
+  roadHealthController?.destroy();
+  roadHealthController = mountRoadHealth(pageContent, state.orders, {
+    resolveLocation: reverseGeocode,
+    onRefresh: async () => {
+      api.invalidateReads(['events', 'finish']);
+      return getOrdersData(true);
+    },
+    onOpenOrder: async id => {
+      await go('orders');
+      if (state.page !== 'orders') return;
+      const row = [...pageContent.querySelectorAll('[data-queue-order]')].find(button => button.dataset.queueOrder === String(id));
+      row?.click();
+      row?.scrollIntoView({ block: 'nearest' });
+    },
+  });
 }
 
 async function renderOrders(navigationId = state.navigationId) {
@@ -526,14 +552,15 @@ function mountOrderDetail(order, root, { embedded = false, onChanged } = {}) {
   order.alertMedia ||= [];
   order.processedMedia ||= [];
   let finishUpload;
+  let assignmentSync;
   let actionBusy = false;
   const isBusy = () => actionBusy || Boolean(finishUpload?.isBusy());
   const close = () => {
     if (isBusy()) { showToast('工单操作进行中，请稍后再关闭'); return; }
+    assignmentSync?.destroy();
     finishUpload?.destroy(); root.innerHTML = '';
   };
   const render = () => {
-    const reviewLabel = order.reviewStatus === 1 ? '合格' : order.reviewStatus === 0 ? '不合格' : '待审核';
     const actions = order.status === 'pending'
       ? `<button class="outline-btn" type="button" data-detail-review="${esc(order.id)}" data-valid="0" data-result="无效">判定无效</button><button class="primary-btn" type="button" data-detail-send="${esc(order.id)}">发送工单</button>`
       : order.status === 'review'
@@ -541,7 +568,7 @@ function mountOrderDetail(order, root, { embedded = false, onChanged } = {}) {
         : order.status === 'processing'
           ? `<span class="order-followup">已耗时：<b data-order-elapsed data-order-remarks="${esc(order.remarks || '')}">${elapsedText(order.remarks)}</b><button class="outline-btn" type="button" data-detail-remind="${esc(order.id)}" data-order-remind="${esc(order.id)}" data-order-remarks="${esc(order.remarks || '')}" ${canRemind(order) ? '' : 'disabled'}>催办</button></span>`
         : '';
-    root.innerHTML = `${embedded ? '' : '<div class="order-detail-scrim" data-detail-close></div>'}<section class="${embedded ? 'order-detail-inline' : 'order-detail-dialog'}" ${embedded ? '' : 'role="dialog" aria-modal="true"'} aria-label="工单详情" data-detail-order="${esc(order.id)}"><header class="order-detail-head"><div><p>工单详情 · 事件 #${esc(order.id)}</p><h2>${esc(order.title)}</h2></div>${embedded ? '' : '<button class="order-detail-close" type="button" aria-label="关闭详情" data-detail-close>×</button>'}</header><div class="order-detail-summary"><div><small>上报时间</small><b>${esc(order.occurredAt)}</b></div><div><small>事件类型</small><b>${esc(order.eventType || order.title)}</b></div><div><small>优先级</small>${badge(order.priority, severityClass(order.priority))}</div><div><small>审核结果</small>${badge(reviewLabel, order.reviewStatus === 1 ? 'green' : order.reviewStatus === 0 ? 'gray' : 'amber')}</div><div><small>处置状态</small>${badge(WORK_ORDER_STATUS[order.status] || order.processStatus, statusClass(order.status))}</div></div><div class="order-detail-media">${detailMediaPanel('报警材料', 'alarm', order.alertMedia, mediaPage.alarm)}${detailMediaPanel('处理后材料', 'processed', order.processedMedia, mediaPage.processed, isProcessingStatus(order.status))}</div><section class="order-detail-notes"><div><h3>事件信息</h3><p>车牌：${esc(order.licensePlate)}<br>${orderLocationMarkup(order)}</p></div><div><h3>备注</h3><p>${remarksMarkup(order.remarks)}</p></div></section><footer class="order-detail-actions">${actions}</footer></section>`;
+    root.innerHTML = `${embedded ? '' : '<div class="order-detail-scrim" data-detail-close></div>'}<section class="${embedded ? 'order-detail-inline' : 'order-detail-dialog'}" ${embedded ? '' : 'role="dialog" aria-modal="true"'} aria-label="工单详情" data-detail-order="${esc(order.id)}"><header class="order-detail-head"><div><p>工单详情 · 事件 #${esc(order.id)}</p><h2>${esc(order.title)}</h2></div>${embedded ? '' : '<button class="order-detail-close" type="button" aria-label="关闭详情" data-detail-close>×</button>'}</header><div class="order-detail-summary"><div><small>上报时间</small><b>${esc(order.occurredAt)}</b></div><div><small>事件类型</small><b>${esc(order.eventType || order.title)}</b></div><div><small>优先级</small>${badge(order.priority, severityClass(order.priority))}</div><div><small>分配人员</small><b data-order-assignee aria-live="polite">${esc(order.assignee || '待分配')}</b></div><div><small>处置状态</small>${badge(WORK_ORDER_STATUS[order.status] || order.processStatus, statusClass(order.status))}</div></div><div class="order-detail-media">${detailMediaPanel('报警材料', 'alarm', order.alertMedia, mediaPage.alarm)}${detailMediaPanel('处理后材料', 'processed', order.processedMedia, mediaPage.processed, isProcessingStatus(order.status))}</div><section class="order-detail-notes"><div><h3>事件信息</h3><p>车牌：${esc(order.licensePlate)}<br>${orderLocationMarkup(order)}</p></div><div><h3>备注</h3><p>${remarksMarkup(order.remarks)}</p></div></section><footer class="order-detail-actions">${actions}</footer></section>`;
     root.querySelectorAll('[data-detail-close]').forEach(button => button.addEventListener('click', close));
     root.querySelectorAll('[data-media-gallery]').forEach(gallery => gallery.addEventListener('click', event => {
       const button = event.target.closest('[data-media-step]');
@@ -609,6 +636,20 @@ function mountOrderDetail(order, root, { embedded = false, onChanged } = {}) {
       () => api.remindWorkOrder(order.id, order.remarks), '已添加催办备注', '催办失败')));
   };
   render();
+  const detailElement = root.querySelector('[data-detail-order]');
+  assignmentSync = startOrderAssignmentSync({
+    orderId: order.id,
+    load: () => api.getWorkOrderAssignments(),
+    isActive: () => root.isConnected && root.querySelector('[data-detail-order]') === detailElement,
+    onUpdate: ({ matchId, assignee }) => {
+      order.matchId = matchId;
+      order.assignee = assignee;
+      const currentOrder = state.orders.find(item => item.id === order.id);
+      if (currentOrder) Object.assign(currentOrder, { matchId, assignee });
+      const label = detailElement.querySelector('[data-order-assignee]');
+      if (label && label.textContent !== assignee) label.textContent = assignee;
+    },
+  });
   startOrderElapsedTimer();
   const locationName = root.querySelector('[data-location-name]');
   const point = orderCoordinate(order);
@@ -620,7 +661,7 @@ function mountOrderDetail(order, root, { embedded = false, onChanged } = {}) {
       if (locationName?.isConnected) locationName.textContent = `地点名称解析失败：${error.message}`;
     });
   }
-  return { isBusy, destroy() { finishUpload?.destroy(); root.querySelectorAll('video').forEach(video => video.pause()); root.innerHTML = ''; } };
+  return { isBusy, destroy() { assignmentSync?.destroy(); finishUpload?.destroy(); root.querySelectorAll('video').forEach(video => video.pause()); root.innerHTML = ''; } };
 }
 
 function detailMediaPanel(title, section, items, page) {
@@ -789,10 +830,10 @@ function openExportDeviceDialog(devices) {
 async function renderSettings() { pageContent.innerHTML=`<section class="settings-layout"><article class="panel setting-card"><h2>告警判定规则</h2><p>调整后会在下一次设备同步时生效。</p><label>违停最短判定时长 <div class="input-suffix"><input id="stop-minutes" type="number" value="180" min="30"><span>秒</span></div></label><label>道路病害告警置信度 <div class="input-suffix"><input id="confidence" type="number" value="85" min="1" max="100"><span>%</span></div></label><label class="switch-row">高优先级事件即时通知 <input id="notice" type="checkbox" checked></label><button class="primary-btn" id="save-settings">保存配置</button></article><article class="panel setting-card"><h2>电子围栏与白名单</h2><p>配置禁行区域、重点巡检路段和特种车辆白名单。</p><button class="outline-btn wide-btn">管理电子围栏</button><button class="outline-btn wide-btn">管理白名单车辆</button><hr><h3>模型发布</h3><p>当前生产版本：<b>vision-1.4.2</b></p><button class="text-btn">查看模型版本记录 →</button></article></section>`; document.querySelector('#save-settings').addEventListener('click',async()=>{await api.updateSettings({stopDuration:Number(document.querySelector('#stop-minutes').value),confidence:Number(document.querySelector('#confidence').value),instantNotice:document.querySelector('#notice').checked});showToast('配置已保存，将在设备下次同步时生效');}); }
 
 applyProfile();
+mountWeather(document.querySelector('#weather-root'));
 updateClock();
 setInterval(updateClock, 1000);
 profileButton.addEventListener('click', openProfile);
-homeButton?.addEventListener('click', () => go('dashboard'));
 document.querySelectorAll('[data-center-page]').forEach(button => button.addEventListener('click', () => openCenterPage(button.dataset.centerPage)));
 installPullToRefresh();
 

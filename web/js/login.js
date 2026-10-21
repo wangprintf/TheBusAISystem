@@ -81,7 +81,7 @@ function renderLegacyRolePickerLogin() {
       <section class="login-intro">
         <div class="login-brand"><span>${BRAND_LOGO_MARKUP}</span>智巡云</div>
         <p class="login-kicker">TRAFFIC EVENT MANAGEMENT</p>
-        <h1>统一登录，协同处置城市交通事件</h1>
+        <h1>基于边缘感知的路网健康巡检系统</h1>
       </section>
       <section class="login-card" aria-labelledby="login-title">
         <p class="login-card-kicker">欢迎使用</p>
@@ -157,7 +157,7 @@ function renderLogin() {
       <section class="login-intro">
         <div class="login-brand"><span>${BRAND_LOGO_MARKUP}</span>智巡云</div>
         <p class="login-kicker">TRAFFIC EVENT MANAGEMENT</p>
-        <h1>统一登录，协同处置城市交通事件</h1>
+        <h1>基于边缘感知的路网健康巡检系统</h1>
       </section>
       <section class="login-card" aria-labelledby="login-title">
         <p class="login-card-kicker">欢迎使用</p>

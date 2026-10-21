@@ -1,0 +1,170 @@
+{
+  "input": "C:\\Users\\wangmeng\\Desktop\\\u667a\u5de1\u4e91-\u4f5c\u54c1\u529f\u80fd\u4e0e\u539f\u578b\u8bbe\u8ba1(1).docx",
+  "fonts_by_char_count": {
+    "\u9ed1\u4f53": 33
+  },
+  "direct_run_formatting_runs": 57,
+  "direct_paragraph_formatting_paragraphs": 76,
+  "heading_like_paragraphs_not_heading_style": [
+    {
+      "para_index": 1,
+      "text": "\u4e09\u3001\u4f5c\u54c1\u529f\u80fd\u4e0e\u539f\u578b\u8bbe\u8ba1",
+      "style": "Normal"
+    },
+    {
+      "para_index": 3,
+      "text": "\uff081\uff09\u529f\u80fd\u6982\u8ff0",
+      "style": "Normal"
+    },
+    {
+      "para_index": 5,
+      "text": "\uff082\uff09\u539f\u578b\u8bbe\u8ba1",
+      "style": "Normal"
+    },
+    {
+      "para_index": 6,
+      "text": "\u8f6f\u4ef6\u540d\u79f0\uff1a\u667a\u5de1\u4e91\u2014\u2014\u57fa\u4e8e\u8fb9\u7f18\u611f\u77e5\u7684\u8def\u7f51\u5065\u5eb7\u5de1\u68c0\u7cfb\u7edf",
+      "style": "Normal"
+    },
+    {
+      "para_index": 7,
+      "text": "\u8f6f\u4ef6\u7c7b\u578b\uff1a\u667a\u6167\u57ce\u5e02 / \u4ea4\u901a\u5de1\u68c0\u5916\u52e4\u4f5c\u4e1a App",
+      "style": "Normal"
+    },
+    {
+      "para_index": 8,
+      "text": "\u5b9e\u73b0\u5e73\u53f0\uff1aAndroid\uff08\u6700\u4f4e Android 8.0 / API 26\uff0c\u76ee\u6807 Android 15 / API 35\uff09",
+      "style": "Normal"
+    },
+    {
+      "para_index": 10,
+      "text": "\u5730\u56fe\u4e0e\u4e91\u670d\u52a1\uff1a\u817e\u8baf\u4f4d\u7f6e\u670d\u52a1 GL JS\u3001\u817e\u8baf\u4e91 COS \u5bf9\u8c61\u5b58\u50a8",
+      "style": "Normal"
+    },
+    {
+      "para_index": 11,
+      "text": "\u5c4f\u5e55\u9002\u914d\uff1a\u9002\u914d 360\u00d7640 \u81f3 1440\u00d73200 \u5206\u8fa8\u7387\uff0c\u517c\u5bb9\u624b\u673a\u3001\u5e73\u677f\u53ca\u6298\u53e0\u5c4f\uff1b\u91c7\u7528\u5e95\u90e8 Tab \u5bfc\u822a\uff08\u5de5\u4f5c\u53f0\u3001\u6570\u636e\u5206\u6790\u3001\u5730\u56fe\u5de5\u5355\u3001\u8bbe\u5907\u8fd0\u7ef4\uff09",
+      "style": "Normal"
+    },
+    {
+      "para_index": 12,
+      "text": "\u6d4b\u8bd5\u73af\u5883\uff1aAndroid Studio \u6a21\u62df\u5668\uff0cAndroid API 36\uff0c\u5c4f\u5e55\u5206\u8fa8\u7387 1080\u00d72400",
+      "style": "Normal"
+    },
+    {
+      "para_index": 29,
+      "text": "\u529f\u80fd\u540d\u79f0",
+      "style": "Normal"
+    },
+    {
+      "para_index": 30,
+      "text": "\u529f\u80fd\u63cf\u8ff0",
+      "style": "Normal"
+    },
+    {
+      "para_index": 31,
+      "text": "\u767b\u5f55\u8ba4\u8bc1",
+      "style": "Normal"
+    },
+    {
+      "para_index": 33,
+      "text": "\u5de5\u4f5c\u53f0",
+      "style": "Normal"
+    },
+    {
+      "para_index": 35,
+      "text": "\u667a\u80fd\u6d3e\u5355",
+      "style": "Normal"
+    },
+    {
+      "para_index": 37,
+      "text": "\u5730\u56fe\u5de5\u5355",
+      "style": "Normal"
+    },
+    {
+      "para_index": 39,
+      "text": "\u5de5\u5355\u7b5b\u9009",
+      "style": "Normal"
+    },
+    {
+      "para_index": 41,
+      "text": "\u5de5\u5355\u8be6\u60c5",
+      "style": "Normal"
+    },
+    {
+      "para_index": 43,
+      "text": "\u73b0\u573a\u5904\u7f6e\u4e0e\u95ed\u73af",
+      "style": "Normal"
+    },
+    {
+      "para_index": 45,
+      "text": "\u8def\u5f84\u5bfc\u822a",
+      "style": "Normal"
+    },
+    {
+      "para_index": 47,
+      "text": "\u8bbe\u5907\u8fd0\u7ef4",
+      "style": "Normal"
+    }
+  ],
+  "examples": {
+    "direct_paragraph_formatting": [
+      {
+        "para_index": 1,
+        "text": "\u4e09\u3001\u4f5c\u54c1\u529f\u80fd\u4e0e\u539f\u578b\u8bbe\u8ba1",
+        "style": "Normal"
+      },
+      {
+        "para_index": 2,
+        "text": "\u201c\u667a\u5de1\u4e91\u2014\u2014\u57fa\u4e8e\u8fb9\u7f18\u611f\u77e5\u7684\u8def\u7f51\u5065\u5eb7\u5de1\u68c0\u7cfb\u7edf\u201d\u9762\u5411\u4ea4\u901a\u7ba1\u7406\u90e8\u95e8\u7684\u5916\u52e4\u5de1\u68c0\u4e0e\u8bbe\u5907\u8fd0\u7ef4\u573a\u666f\uff0c\u56f4\u7ed5\u667a\u80fd\u6d3e\u5355\u3001\u5730\u56fe\u5de5\u5355\u3001\u73b0\u573a\u5904\u7f6e\u3001\u6570\u636e\u5206\u6790\u3001\u8bbe\u5907\u8fd0\u7ef4\u4e0e\u667a\u80fd\u95ee\u7b54\u6784\u5efa\u4e00\u4f53\u5316\u4f5c\u4e1a\u80fd\u529b\u3002\u4e0b\u9762\u5206\u522b\u4ece\u529f\u80fd\u6982\u8ff0\u4e0e\u539f\u578b\u8bbe\u8ba1\u4e24\u4e2a\u65b9\u9762\u8fdb\u884c\u8bf4\u660e\uff0c\u5168\u90e8\u754c\u9762\u5747\u5728 Androi",
+        "style": "Normal"
+      },
+      {
+        "para_index": 3,
+        "text": "\uff081\uff09\u529f\u80fd\u6982\u8ff0",
+        "style": "Normal"
+      },
+      {
+        "para_index": 5,
+        "text": "\uff082\uff09\u539f\u578b\u8bbe\u8ba1",
+        "style": "Normal"
+      },
+      {
+        "para_index": 6,
+        "text": "\u8f6f\u4ef6\u540d\u79f0\uff1a\u667a\u5de1\u4e91\u2014\u2014\u57fa\u4e8e\u8fb9\u7f18\u611f\u77e5\u7684\u8def\u7f51\u5065\u5eb7\u5de1\u68c0\u7cfb\u7edf",
+        "style": "Normal"
+      }
+    ],
+    "direct_run_formatting": [
+      {
+        "para_index": 1,
+        "run_text": "\u4e09\u3001\u4f5c\u54c1\u529f\u80fd\u4e0e\u539f\u578b\u8bbe\u8ba1",
+        "style": "Normal"
+      },
+      {
+        "para_index": 3,
+        "run_text": "\uff081\uff09\u529f\u80fd\u6982\u8ff0",
+        "style": "Normal"
+      },
+      {
+        "para_index": 5,
+        "run_text": "\uff082\uff09\u539f\u578b\u8bbe\u8ba1",
+        "style": "Normal"
+      },
+      {
+        "para_index": 6,
+        "run_text": "\u8f6f\u4ef6\u540d\u79f0\uff1a",
+        "style": "Normal"
+      },
+      {
+        "para_index": 7,
+        "run_text": "\u8f6f\u4ef6\u7c7b\u578b\uff1a",
+        "style": "Normal"
+      }
+    ]
+  },
+  "notes": [
+    "Direct formatting is not always wrong, but it often causes inconsistent output when templates change.",
+    "Heading-like paragraphs not using Heading styles can break TOC and accessibility."
+  ]
+}

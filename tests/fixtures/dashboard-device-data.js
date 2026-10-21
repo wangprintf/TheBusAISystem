@@ -18,6 +18,7 @@ export const api = {
   getAlerts: async () => fixtureOrders.map(order => ({ ...order, id: `ALERT-${order.id}`, type: order.title })),
   getDevices: async () => structuredClone(fixtureDevices),
   getWorkOrders: async () => structuredClone(fixtureOrders),
+  getWorkOrderAssignments: async () => fixtureOrders.map(order => ({ id: order.id, matchId: order.matchId || null, assignee: order.assignee || '待分配' })),
   async uploadFinishMedia(id, file, uploadId, onProgress) {
     for (const progress of [25, 60, 99]) { await new Promise(resolve => setTimeout(resolve, 120)); onProgress(progress); }
     if (file.name.includes('fail') && !failedOnce.has(uploadId)) { failedOnce.add(uploadId); throw new Error('测试上传失败，请重试'); }

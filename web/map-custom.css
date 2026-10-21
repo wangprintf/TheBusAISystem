@@ -217,3 +217,4 @@
 .order-detail-dialog {
   z-index: 1001 !important;
 }
+.personnel-map-tooltip{padding:6px 10px;border:1px solid #39758a;border-radius:6px;background:#0b2639;color:#e4faff;font:12px/1.5 'Microsoft YaHei',sans-serif;white-space:nowrap;box-shadow:0 4px 16px #0005;pointer-events:none}

@@ -7,6 +7,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const publicFiles = new Set([
+  '/web/road-health.css', '/web/js/road-health.js', '/web/js/road-health-data.js',
+  '/tests/fixtures/road-health-bootstrap.js',
+  '/web/navigation.css', '/web/weather.css', '/web/js/weather.js',
+  '/web/js/order-assignment-sync.js',
   '/web/js/personnel-location.js',
   '/web/js/personnel-names.js',
   '/web/patrol-agent.css', '/web/js/patrol-agent.js', '/web/assets/patrol-agent.png',
@@ -31,7 +35,7 @@ const server = http.createServer(async (req, res) => {
       const html = await fs.readFile(path.join(root, 'tests/fixtures/hover-pin.html'), 'utf8');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(html); return;
     }
-    if (url === '/preview' || url === '/order-preview' || url === '/activity-preview' || url === '/center-preview' || url === '/map-preview' || url === '/agent-preview' || url === '/agent-connected-preview') {
+    if (url === '/preview' || url === '/health-preview' || url === '/order-preview' || url === '/activity-preview' || url === '/center-preview' || url === '/map-preview' || url === '/agent-preview' || url === '/agent-connected-preview') {
       let html = await fs.readFile(path.join(root, 'web/index.html'), 'utf8');
       html = html.replaceAll('href="./', 'href="/web/').replace(/<script type="module" src="\.\/js\/login\.js(?:\?[^"]*)?"><\/script>/, '<script type="importmap">{"imports":{"/web/js/api.js":"/tests/fixtures/dashboard-device-data.js","/web/js/tencent-map.js":"/tests/fixtures/dashboard-device-map.js"}}</script><script type="module" src="/tests/fixtures/dashboard-device-bootstrap.js"></script>');
       if (url.startsWith('/agent-')) html = html.replace('src="/tests/fixtures/dashboard-device-bootstrap.js"', 'src="/tests/fixtures/patrol-agent-bootstrap.js"');
@@ -39,6 +43,7 @@ const server = http.createServer(async (req, res) => {
       if (url === '/order-preview') html = html.replace('src="/tests/fixtures/dashboard-device-bootstrap.js"', 'src="/tests/fixtures/dashboard-order-bootstrap.js"');
       if (url === '/activity-preview') html = html.replace('src="/tests/fixtures/dashboard-device-bootstrap.js"', 'src="/tests/fixtures/dashboard-activity-bootstrap.js"');
       if (url === '/center-preview') html = html.replace('src="/tests/fixtures/dashboard-device-bootstrap.js"', 'src="/tests/fixtures/order-center-bootstrap.js"');
+      if (url === '/health-preview') html = html.replace('src="/tests/fixtures/dashboard-device-bootstrap.js"', 'src="/tests/fixtures/road-health-bootstrap.js"');
       if (url === '/map-preview') html = html.replace(',"/web/js/tencent-map.js":"/tests/fixtures/dashboard-device-map.js"', '').replace('src="/tests/fixtures/dashboard-device-bootstrap.js"', 'src="/tests/fixtures/map-cluster-bootstrap.js"');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(html); return;
     }

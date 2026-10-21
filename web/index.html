@@ -17,7 +17,9 @@
     <link rel="stylesheet" href="./finish-upload.css" />
     <link rel="stylesheet" href="./order-center.css" />
     <link rel="stylesheet" href="./patrol-agent.css" />
-    <link rel="stylesheet" href="./navigation.css" />
+    <link rel="stylesheet" href="./weather.css?v=20261018-compact-header" />
+    <link rel="stylesheet" href="./road-health.css?v=20261020-compact-toolbar" />
+    <link rel="stylesheet" href="./navigation.css?v=20261021-four-modules" />
   </head>
   <body>
     <div class="app-shell">
@@ -29,10 +31,14 @@
       <main class="main-content">
         <header class="topbar main-navigation-header">
           <div id="patrol-agent-root"></div>
-          <button class="home-btn" id="home-button" type="button" aria-label="返回路网总览">路网总览</button>
-          <button class="center-nav center-nav-orders" data-center-page="orders" type="button" aria-controls="page-content" hidden>事件中心</button>
+          <section id="weather-root" aria-label="天津未来七天天气预报"></section>
           <div class="page-heading"><p class="eyebrow" id="page-kicker">路网运行 · 实时巡检指挥中心</p><h1 id="page-title">路网健康巡检系统</h1></div>
-          <button class="center-nav center-nav-devices" data-center-page="devices" type="button" aria-controls="page-content" hidden>设备中心</button>
+          <nav class="module-nav" aria-label="业务功能导航">
+            <button class="module-nav-button module-dashboard" data-center-page="dashboard" type="button" aria-label="路网总览" aria-controls="page-content" hidden><span class="module-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg></span><span class="module-nav-label"><strong>路网总览</strong></span></button>
+            <button class="module-nav-button module-orders" data-center-page="orders" type="button" aria-label="事件中心" aria-controls="page-content" hidden><span class="module-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4H5v17h14V4h-3M9 3h6v4H9zM8 12h8M8 16h5" /></svg></span><span class="module-nav-label"><strong>事件中心</strong></span></button>
+            <button class="module-nav-button module-health" data-center-page="health" type="button" aria-label="道路健康档案" aria-controls="page-content" hidden><span class="module-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3 3 21M17 3l4 18M12 3v4m0 4v3m0 4v3" /></svg></span><span class="module-nav-label"><strong>道路健康档案</strong></span></button>
+            <button class="module-nav-button module-devices" data-center-page="devices" type="button" aria-label="设备中心" aria-controls="page-content" hidden><span class="module-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="13" rx="2" /><path d="M8 21h8m-4-5v5M7 11l3-4 3 5 3-3h2" /></svg></span><span class="module-nav-label"><strong>设备中心</strong></span></button>
+          </nav>
           <section id="order-summary" class="order-status-overview" aria-label="工单状态概览"></section>
           <div class="top-actions"><button class="ghost-btn" id="date-button" type="button" aria-label="当前时间"></button><button class="avatar" id="profile-button" type="button" aria-label="个人信息">王</button></div>
         </header>

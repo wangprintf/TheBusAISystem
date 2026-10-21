@@ -24,6 +24,12 @@ function clusterSource(count, size) {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
+function personnelClusterSource(count, size) {
+  const center = size / 2;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${center}" cy="${center}" r="${center - 2}" fill="#123e51" stroke="#60d9e6" stroke-width="2"/><text x="50%" y="50%" dy=".35em" text-anchor="middle" fill="#e4faff" font-family="Arial,sans-serif" font-size="13" font-weight="700">${count}</text></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
 function loadTencentMapSdk(key) {
   if (window.TMap?.MarkerCluster) return Promise.resolve(window.TMap);
   if (sdkPromise) return sdkPromise;
@@ -141,6 +147,10 @@ export async function createTencentMap({ container, alerts = [], onAlertClick, o
   let marker;
   let cluster;
   let personnelMarker;
+  let personnelCluster;
+  let personnelTooltip;
+  let personnelStyles = {};
+  const personnelGroups = new Map();
   let personnel = [];
   let personnelStyleSignature = '';
   let disposed = false;
@@ -155,6 +165,7 @@ export async function createTencentMap({ container, alerts = [], onAlertClick, o
     map = new TMap.Map(container, {
       center: new TMap.LatLng(Number(center.latitude), Number(center.longitude)),
       zoom: points.length ? zoomForPoints(points) : TENCENT_MAP_CONFIG.zoom,
+      mapStyleId: 'DARK',
     });
     marker = new TMap.MultiMarker({
       map,
@@ -223,31 +234,87 @@ export async function createTencentMap({ container, alerts = [], onAlertClick, o
   cluster.on('cluster_changed', renderClusters);
   marker.on('click', onMarkerClick);
   updateGeometries();
+  const hidePersonnelTooltip = () => personnelTooltip?.close();
+  const renderPersonnelClusters = () => {
+    if (disposed) return;
+    hidePersonnelTooltip();
+    personnelGroups.clear();
+    let stylesChanged = false;
+    const geometries = personnelCluster.getClusters().flatMap((group, index) => {
+      // Ignore results from an earlier location refresh.
+      const members = group.geometries.filter(geometry => personnel.some(person => person.accountId === geometry.properties.accountId));
+      if (!members.length) return [];
+      if (members.length === 1) return [{ ...members[0], styleId: `person-${members[0].properties.accountId}` }];
+      const count = members.length;
+      const id = `personnel-cluster-${index}`;
+      const styleId = `people-${count}`;
+      if (!personnelStyles[styleId]) {
+        const size = Math.max(34, String(count).length * 8 + 14);
+        personnelStyles[styleId] = new TMap.MarkerStyle({ width: size, height: size, anchor: { x: size / 2, y: size / 2 }, src: personnelClusterSource(count, size) });
+        stylesChanged = true;
+      }
+      personnelGroups.set(id, group);
+      return [{ id, styleId, position: group.center, properties: { personnelClusterId: id, count } }];
+    });
+    if (stylesChanged) personnelMarker.setStyles(personnelStyles);
+    personnelMarker.setGeometries(geometries);
+  };
+  const onPersonnelMarkerOver = event => {
+    if (disposed || !event.geometry) return;
+    const { geometry } = event;
+    const person = personnel.find(item => item.accountId === geometry.properties?.accountId);
+    const label = person ? person.name : geometry.properties?.count ? `${geometry.properties.count} 位人员 · 点击展开` : '';
+    if (!label) return;
+    const safeLabel = String(label).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    const content = `<div class="personnel-map-tooltip" role="tooltip">${safeLabel}</div>`;
+    if (!personnelTooltip) personnelTooltip = new TMap.InfoWindow({ map, position: geometry.position, content, enableCustom: true, offset: { x: 0, y: -22 }, zIndex: 20 });
+    else personnelTooltip.setContent(content).setPosition(geometry.position);
+    personnelTooltip.open();
+  };
   const onPersonnelMarkerClick = event => {
+    if (disposed) return;
+    hidePersonnelTooltip();
+    const group = personnelGroups.get(event.geometry?.properties?.personnelClusterId);
+    if (group) {
+      map.setCenter(group.center);
+      map.setZoom(Math.min(18, map.getZoom() + 2));
+      return;
+    }
     const person = personnel.find(item => item.accountId === event.geometry?.properties?.accountId);
-    if (person && !disposed) onPersonnelClick?.(person);
+    if (person) onPersonnelClick?.(person);
   };
 
   return {
     available: true,
     updatePersonnel(next = []) {
       if (disposed) return;
+      hidePersonnelTooltip();
       personnel = next.filter(person => person.accountId && hasCoordinates(person));
-      if (!personnel.length) { personnelMarker?.setGeometries([]); return; }
+      if (!personnel.length) {
+        personnelCluster?.setGeometries([]);
+        personnelMarker?.setGeometries([]);
+        personnelGroups.clear();
+        return;
+      }
       const sources = personnel.map(person => [person.accountId, personnelPinSource(person)]);
       if (!personnelMarker) {
         // Personnel stay separate from work-order clustering and category filters.
         personnelMarker = new TMap.MultiMarker({ map, zIndex: 10, styles: {} });
         personnelMarker.on('click', onPersonnelMarkerClick);
+        personnelMarker.on('mouseover', onPersonnelMarkerOver);
+        personnelMarker.on('mouseout', hidePersonnelTooltip);
+        personnelCluster = new TMap.MarkerCluster({ map, geometries: [], minimumClusterSize: 2, gridSize: 48, averageCenter: true, maxZoom: 16, zoomOnClick: false, enableDefaultStyle: false });
+        personnelCluster.on('cluster_changed', renderPersonnelClusters);
       }
       const signature = JSON.stringify(sources);
       if (signature !== personnelStyleSignature) {
-        personnelMarker.setStyles(Object.fromEntries(sources.map(([id, src]) => [
-          `person-${id}`, new TMap.MarkerStyle({ width: 64, height: 82, anchor: { x: 32, y: 73 }, src }),
-        ])));
+        personnelStyles = Object.fromEntries(sources.map(([id, src]) => [
+          `person-${id}`, new TMap.MarkerStyle({ width: 30, height: 30, anchor: { x: 15, y: 15 }, src }),
+        ]));
+        personnelMarker.setStyles(personnelStyles);
         personnelStyleSignature = signature;
       }
-      personnelMarker.setGeometries(personnel.map(person => ({
+      personnelCluster.setGeometries(personnel.map(person => ({
         id: `person-${person.accountId}`, styleId: `person-${person.accountId}`,
         position: new TMap.LatLng(person.latitude, person.longitude),
         properties: { accountId: person.accountId },
@@ -283,11 +350,17 @@ export async function createTencentMap({ container, alerts = [], onAlertClick, o
       cluster.off('cluster_changed', renderClusters);
       marker.off('click', onMarkerClick);
       personnelMarker?.off('click', onPersonnelMarkerClick);
+      personnelMarker?.off('mouseover', onPersonnelMarkerOver);
+      personnelMarker?.off('mouseout', hidePersonnelTooltip);
+      personnelCluster?.off('cluster_changed', renderPersonnelClusters);
+      personnelCluster?.destroy();
+      personnelTooltip?.setMap(null);
       personnelMarker?.setMap(null);
       cluster.destroy();
       marker.setMap(null);
       map.destroy();
       clusterGroups.clear();
+      personnelGroups.clear();
     },
   };
 }

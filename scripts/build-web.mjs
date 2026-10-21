@@ -1,4 +1,5 @@
-import { cp, mkdir, rm } from 'node:fs/promises';
+import { cp, mkdir, rm, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
@@ -20,6 +21,8 @@ const files = [
   'order-center.css',
   'patrol-agent.css',
   'navigation.css',
+  'weather.css',
+  'road-health.css',
 ];
 const assetFiles = ['mobius-icon.svg', 'zhixunyun-logo.png', 'zhixunyun-logo.svg', 'patrol-agent.png'];
 
@@ -31,3 +34,6 @@ await mkdir(resolve(output, 'assets'), { recursive: true });
 await Promise.all(assetFiles.map((file) => cp(resolve(source, 'assets', file), resolve(output, 'assets', file))));
 
 console.log('网页资源已生成到 web-dist 目录。');
+const indexPath = resolve(output, 'index.html');
+const weatherHash = createHash('sha256').update(await readFile(resolve(output, 'weather.css'))).digest('hex').slice(0, 12);
+await writeFile(indexPath, (await readFile(indexPath, 'utf8')).replace(/\.\/weather\.css(?:\?[^"\s]*)?/, `./weather.css?v=${weatherHash}`));

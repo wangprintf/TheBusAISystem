@@ -39,8 +39,17 @@ test('missing and invalid coordinates are excluded without filtering valid offli
   assert.equal(personnelLocations([{ ...rows[1], status: '0' }], session)[0].status, 'offline');
 });
 
-test('pin shows the full name instead of numeric initials and escapes SVG content', () => {
-  assert.match(decodeURIComponent(personnelPinSource({ name: '李有才', avatar: '56', status: 'online' })), />李有才<\/text>/);
+test('the system account 100000 is excluded from personnel locations', () => {
+  const people = personnelLocations([
+    ...rows,
+    { id: '100000', latitude: '39.056841', longitude: '117.144276', status: '1', name: '未登记姓名' },
+  ], session);
+  assert.deepEqual(people.map(person => person.accountId), ['1002', '1001']);
+  assert.equal(people.some(person => person.accountId === '100000'), false);
+});
+
+test('compact pin uses a name initial instead of numeric initials and escapes SVG content', () => {
+  assert.match(decodeURIComponent(personnelPinSource({ name: '李有才', avatar: '56', status: 'online' })), />才<\/text>/);
   assert.match(decodeURIComponent(personnelPinSource({ name: '<', status: 'offline' })), />&lt;<\/text>/);
   assert.equal(avatarText({ name: '  ' }), '用');
 });

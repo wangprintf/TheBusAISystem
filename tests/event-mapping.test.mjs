@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { buildOrderStatus } from '../web/js/order-status.js';
 import { orderQueue } from '../web/js/order-center.js';
 
-async function fixture(t, rows) {
+async function fixture(t, rows, finishRows = []) {
   const requests = [];
   const previousStorage = globalThis.sessionStorage;
   globalThis.sessionStorage = { getItem: () => '{"token":"mapping-test"}' };
@@ -18,7 +18,7 @@ async function fixture(t, rows) {
       Object.assign(rows.find(row => String(row.id) === fields.id), fields);
       return Response.json({ success: true });
     }
-    return Response.json(new URL(url).pathname === '/api/events' ? rows : []);
+    return Response.json(new URL(url).pathname === '/api/events' ? rows : finishRows);
   });
   const { api } = await import(`../web/js/api.js?mapping=${encodeURIComponent(t.name)}`);
   return { api, requests };
@@ -40,6 +40,41 @@ test('database review stage appears in the dashboard and review queue with NULL 
   assert.deepEqual(buildOrderStatus(orders).groups.map(group => group.count), [1, 1, 1, 1]);
   assert.deepEqual([dashboard.unprocessed, dashboard.processing, dashboard.review, dashboard.completed], [1, 1, 1, 1]);
   assert.equal(dashboard.pendingOrders, 1);
+});
+
+test('work order details expose assigned personnel from finish match_id without changing event fields', async t => {
+  const rows = [
+    { id: 'unassigned', process_status: '未处理', is_valid: null, event_type: '道路安全' },
+    { id: 'assigned', process_status: '处理中', is_valid: null, event_type: '道路安全' },
+    { id: 'unknown-assignee', process_status: '已完成', is_valid: null, event_type: '道路安全' },
+  ];
+  const { api } = await fixture(t, rows, [
+    { id: 'unassigned', media_url: '', is_valid: null, match_id: null },
+    { id: 'assigned', media_url: '', is_valid: null, match_id: '258438' },
+    { id: 'unknown-assignee', media_url: '', is_valid: null, match_id: '999999' },
+  ]);
+  const orders = await api.getWorkOrders();
+  assert.deepEqual(orders.map(order => order.assignee), ['待分配', '赵文丽', '未登记姓名']);
+  assert.deepEqual(orders.map(order => order.matchId), [null, '258438', '999999']);
+  assert.deepEqual(orders.map(order => order.status), ['pending', 'processing', 'completed']);
+  assert.deepEqual(orders.map(order => order.eventType), ['道路安全', '道路安全', '道路安全']);
+});
+
+test('a finish read failure is visible without masking the event or processed media fields', async t => {
+  const previousStorage = globalThis.sessionStorage;
+  globalThis.sessionStorage = { getItem: () => '{"token":"mapping-test"}' };
+  t.after(() => { if (previousStorage === undefined) delete globalThis.sessionStorage; else globalThis.sessionStorage = previousStorage; });
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    if (new URL(url).pathname === '/api/events/finish') throw new Error('finish unavailable');
+    return Response.json([{ id: 'finish-error', process_status: '处理中', is_valid: null, event_type: '道路安全', processed_media_url: 'https://example.test/processed.jpg' }]);
+  });
+  const { api } = await import(`../web/js/api.js?mapping-finish-error=${encodeURIComponent(t.name)}`);
+  const [order] = await api.getWorkOrders();
+  assert.equal(order.assignee, '读取失败');
+  assert.equal(order.processedMediaLoadFailed, true);
+  assert.equal(order.matchId, null);
+  assert.equal(order.status, 'processing');
+  assert.equal(order.processedMedia[0].url, 'https://example.test/processed.jpg');
 });
 
 test('database progress is independent from validity and supports documented legacy values', async t => {

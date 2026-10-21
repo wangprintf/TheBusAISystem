@@ -35,7 +35,15 @@ function sdkFixture(t) {
     publish(groups) { this.clusters = groups; this.emit('cluster_changed'); }
     destroy() { this.destroyed = true; }
   }
-  globalThis.window = { TMap: { LatLng, MarkerStyle, Map: MapView, MultiMarker, MarkerCluster } };
+  class InfoWindow {
+    constructor(options) { Object.assign(this, options); instances.tooltip = this; }
+    setContent(content) { this.content = content; return this; }
+    setPosition(position) { this.position = position; return this; }
+    open() { this.visible = true; }
+    close() { this.visible = false; }
+    setMap(map) { this.map = map; }
+  }
+  globalThis.window = { TMap: { LatLng, MarkerStyle, Map: MapView, MultiMarker, MarkerCluster, InfoWindow } };
   t.after(() => { if (previous === undefined) delete globalThis.window; else globalThis.window = previous; });
   return instances;
 }
@@ -50,6 +58,7 @@ test('aggregate numbers zoom into their area and expanded pins open the correct 
   const sdk = sdkFixture(t);
   const opened = [];
   const controller = await createTencentMap({ container: { innerHTML: '' }, alerts: orders, onAlertClick: id => opened.push(id) });
+  assert.equal(sdk.map.mapStyleId, 'DARK');
   assert.equal(sdk.cluster.geometries.length, 2);
   assert.equal(sdk.cluster.maxZoom, 17);
   assert.equal(sdk.cluster.enableDefaultStyle, false);
@@ -98,20 +107,26 @@ test('filters survive data refresh, empty results clear markers, and disposal re
   assert.equal(sdk.marker.handlers.size, 0);
 });
 
-test('all personnel get independent pins with correct clicks, overview bounds and refresh lifecycle', async t => {
+test('personnel keep correct clicks, overview bounds and refresh lifecycle independently of event filters', async t => {
   const sdk = sdkFixture(t);
   const selected = [];
   const controller = await createTencentMap({ container: { innerHTML: '' }, alerts: orders, onPersonnelClick: person => selected.push(person) });
   const eventMarker = sdk.marker;
+  const eventCluster = sdk.cluster;
   const person = { accountId: '1001', name: '张丽', latitude: 39.07, longitude: 117.11, status: 'online' };
   const other = { accountId: '1002', name: '李波', latitude: 42, longitude: 111, status: 'offline' };
   controller.updatePersonnel([person, other]);
   const personMarker = sdk.marker;
+  const personCluster = sdk.cluster;
+  const expand = () => personCluster.publish(personCluster.geometries.map(geometry => ({ center: geometry.position, geometries: [geometry] })));
+  expand();
   assert.notEqual(personMarker, eventMarker);
+  assert.notEqual(personCluster, eventCluster);
   assert.equal(personMarker.geometries.length, 2);
-  assert.match(decodeURIComponent(personMarker.styles['person-1001'].src), />张丽<\/text>/);
-  assert.match(decodeURIComponent(personMarker.styles['person-1002'].src), />李波<\/text>/);
-  assert.equal(sdk.cluster.geometries.length, 2);
+  assert.match(decodeURIComponent(personMarker.styles['person-1001'].src), />丽<\/text>/);
+  assert.match(decodeURIComponent(personMarker.styles['person-1002'].src), />波<\/text>/);
+  assert.equal(personMarker.styles['person-1001'].width, 30);
+  assert.equal(eventCluster.geometries.length, 2);
   controller.setVisibleCategories(new Set());
   assert.deepEqual(eventMarker.geometries, []);
   assert.equal(personMarker.geometries.length, 2);
@@ -125,6 +140,7 @@ test('all personnel get independent pins with correct clicks, overview bounds an
   const center = sdk.map.center;
   const moved = { ...person, latitude: 39.08, status: 'offline' };
   controller.updatePersonnel([moved, other]);
+  expand();
   assert.equal(personMarker.geometries[0].position.lat, 39.08);
   assert.equal(sdk.map.center, center);
   personMarker.emit('click', { geometry: personMarker.geometries[1] });
@@ -133,6 +149,7 @@ test('all personnel get independent pins with correct clicks, overview bounds an
   controller.updateAlerts([]);
   assert.equal(personMarker.geometries.length, 2);
   controller.updatePersonnel([other]);
+  expand();
   assert.equal(personMarker.geometries[0].properties.accountId, '1002');
   assert.deepEqual(Object.keys(personMarker.styles), ['person-1002']);
   controller.updatePersonnel([]);
@@ -142,8 +159,50 @@ test('all personnel get independent pins with correct clicks, overview bounds an
   controller.destroy();
   assert.equal(personMarker.map, null);
   assert.equal(personMarker.handlers.size, 0);
+  assert.equal(personCluster.destroyed, true);
+  assert.equal(personCluster.handlers.size, 0);
   controller.updatePersonnel([person]);
   assert.deepEqual(personMarker.geometries, []);
+});
+
+test('nearby personnel aggregate, expand on click, and show escaped full names on hover', async t => {
+  const sdk = sdkFixture(t);
+  const selected = [];
+  const controller = await createTencentMap({ container: { innerHTML: '' }, alerts: orders, onPersonnelClick: person => selected.push(person) });
+  const people = [
+    { accountId: '1', name: '李有才', latitude: 39.07, longitude: 117.11, status: 'online' },
+    { accountId: '2', name: '<测试&姓名>', latitude: 39.0701, longitude: 117.1101, status: 'offline' },
+  ];
+  controller.updatePersonnel(people);
+  const { marker, cluster, map } = sdk;
+  const center = cluster.geometries[0].position;
+  cluster.publish([{ center, geometries: cluster.geometries }]);
+  assert.equal(marker.geometries.length, 1);
+  const aggregate = marker.geometries[0];
+  assert.equal(aggregate.properties.count, 2);
+  const zoom = map.zoom;
+  marker.emit('mouseover', { geometry: aggregate });
+  assert.match(sdk.tooltip.content, /2 位人员/);
+  marker.emit('click', { geometry: aggregate });
+  assert.equal(map.center, center);
+  assert.equal(map.zoom, zoom + 2);
+  assert.deepEqual(selected, []);
+  assert.equal(sdk.tooltip.visible, false);
+  cluster.publish(cluster.geometries.map(geometry => ({ center: geometry.position, geometries: [geometry] })));
+  marker.emit('mouseover', { geometry: marker.geometries[0] });
+  assert.match(sdk.tooltip.content, /李有才/);
+  assert.equal(sdk.tooltip.visible, true);
+  marker.emit('mouseout', {});
+  assert.equal(sdk.tooltip.visible, false);
+  marker.emit('mouseover', { geometry: marker.geometries[1] });
+  assert.match(sdk.tooltip.content, /&lt;测试&amp;姓名&gt;/);
+  marker.emit('click', { geometry: marker.geometries[1] });
+  assert.deepEqual(selected, [people[1]]);
+  controller.updatePersonnel([]);
+  assert.equal(sdk.tooltip.visible, false);
+  assert.deepEqual(marker.geometries, []);
+  controller.destroy();
+  assert.equal(sdk.tooltip.map, null);
 });
 
 test('personnel overview spans China and the US across the Pacific and handles coincident coordinates', () => {

@@ -3,6 +3,7 @@ import { uploadFinishFile } from './finish-upload.js';
 import { createReadCache } from './read-cache.js';
 import { buildPriorityTrend } from './priority-trend.js';
 import { personnelLocations } from './personnel-location.js';
+import { PERSONNEL_NAMES } from './personnel-names.js';
 
 const readPaths = { events: '/api/events', devices: '/api/devices', finish: '/api/events/finish' };
 // Keep the successful preview while the existing bucket scanner catches up.
@@ -148,20 +149,30 @@ export const api = {
     alert.status = action.status; return alert;
   },
   async getWorkOrders() {
+    const session = JSON.parse(sessionStorage.getItem('traffic-auth') || '{}');
     const [events, finishMedia] = await Promise.all([
       webReads.read('events'),
-      webReads.read('finish').catch(() => []),
+      webReads.read('finish').catch(() => null),
     ]);
-    const finishMediaByEventId = new Map((Array.isArray(finishMedia) ? finishMedia : []).map(item => [String(item.id), item]));
+    const finishLoaded = Array.isArray(finishMedia);
+    const finishMediaByEventId = new Map((finishLoaded ? finishMedia : []).map(item => [String(item.id), item]));
     return (Array.isArray(events) ? events : [])
       .map(event => {
-        const order = mapDatabaseEvent(event, finishMediaByEventId.get(String(event.id)));
+        const order = mapDatabaseEvent(event, finishLoaded ? finishMediaByEventId.get(String(event.id)) : null, session);
         for (const media of previewsFor(event.id)) {
           const index = order.processedMedia.findIndex(item => new URL(item.url).pathname === new URL(media.url).pathname);
           if (index < 0) order.processedMedia.push(media); else order.processedMedia[index] = media;
         }
         return order;
       }).filter(isVisibleWorkOrder);
+  },
+  async getWorkOrderAssignments() {
+    const session = JSON.parse(sessionStorage.getItem('traffic-auth') || '{}');
+    // Assignment may be written after dispatch by another process. Bypass both
+    // browser and server snapshots so an open detail sees that later DB update.
+    const rows = await webReads.read('finish', { fresh: true });
+    if (!Array.isArray(rows)) throw new Error('工单分配数据格式不正确');
+    return rows.map(row => ({ id: String(row.id), ...mapWorkOrderAssignment(row, session) }));
   },
   async reviewWorkOrder(id, isValid, existingRemarks = '', resultLabel = (Number(isValid) === 0 ? '不合格' : '合格'), status = '') {
     if (![0, 1].includes(Number(isValid))) throw new Error('审核结果必须为 0 或 1');
@@ -291,7 +302,17 @@ function isReturnedWorkOrder(order) {
   return latestResult === '不合格' && ['pending', 'processing', 'review'].includes(order.status);
 }
 
-function mapDatabaseEvent(event, finishMedia = {}) {
+function mapWorkOrderAssignment(finishMedia = {}, session = {}) {
+  const matchId = String(finishMedia?.match_id ?? '').trim() || null;
+  // The finish endpoint supplies the assignment ID but no account names. Reuse
+  // the verified directory, with the login API's name taking precedence.
+  const assignee = finishMedia === null ? '读取失败' : matchId === null ? '待分配'
+    : [matchId === String(session?.accountId ?? '').trim() ? session?.name : '', PERSONNEL_NAMES[matchId]]
+      .map(value => String(value || '').trim()).find(Boolean) || '未登记姓名';
+  return { matchId, assignee };
+}
+
+function mapDatabaseEvent(event, finishMedia = {}, session = {}) {
   const remarks = event.remarks || '';
   const isValid = normalizeReviewStatus(event.is_valid);
   const reviewStatus = isValid ?? (remarks.startsWith('人工审核结果：无效') ? 0 : (remarks.startsWith('人工审核结果：有效') ? 1 : null));
@@ -300,7 +321,7 @@ function mapDatabaseEvent(event, finishMedia = {}) {
   const processStatus = rawProcessStatus === '0' ? '未处理' : rawProcessStatus === '1' ? '已完成' : rawProcessStatus || '未处理';
   const status = { '未处理': 'pending', '处理中': 'processing', '待审核': 'review', '已完成': 'completed' }[processStatus] || 'unknown';
   const alertMedia = parseMediaUrls(event.media_url);
-  const processedMedia = parseMediaUrls(finishMedia.media_url || event.finish_media_url || event.processed_media_url || event.after_media_url || event.handle_media_url || event.media_url_finish || '');
+  const processedMedia = parseMediaUrls(finishMedia?.media_url || event.finish_media_url || event.processed_media_url || event.after_media_url || event.handle_media_url || event.media_url_finish || '');
   const latitude = toNumberOrNull(event.latitude);
   const longitude = toNumberOrNull(event.longitude);
   const sourceType = `${event.event_type || ''} ${event.detail_type || ''}`;
@@ -310,6 +331,7 @@ function mapDatabaseEvent(event, finishMedia = {}) {
     eventType: event.event_type || event.detail_type || '',
     status,
     processStatus,
+    ...mapWorkOrderAssignment(finishMedia, session),
     priority: event.priority_level || '普通',
     severity: event.priority_level || '普通',
     category: mapEventCategory(sourceType),
@@ -324,6 +346,7 @@ function mapDatabaseEvent(event, finishMedia = {}) {
     reviewStatus,
     alertMedia,
     processedMedia,
+    processedMediaLoadFailed: finishMedia === null,
     evidenceUrl: alertMedia.find(item => item.kind === 'image')?.url || '',
   };
 }
