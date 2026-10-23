@@ -1,6 +1,6 @@
 import { DIFY_AGENT_CONFIG } from './config.js';
 
-const iconUrl = new URL('../assets/patrol-agent.png', import.meta.url).href;
+const iconUrl = new URL('../assets/patrol-agent.png?v=20261021-transparent', import.meta.url).href;
 
 // Only published Dify chat pages belong here, never service API keys.
 export function buildDifyEmbedUrl(value, pageUrl) {

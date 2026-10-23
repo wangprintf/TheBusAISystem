@@ -26,7 +26,7 @@ function clusterSource(count, size) {
 
 function personnelClusterSource(count, size) {
   const center = size / 2;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${center}" cy="${center}" r="${center - 2}" fill="#123e51" stroke="#60d9e6" stroke-width="2"/><text x="50%" y="50%" dy=".35em" text-anchor="middle" fill="#e4faff" font-family="Arial,sans-serif" font-size="13" font-weight="700">${count}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${center}" cy="${center}" r="${center - 2}" fill="#e4f3ff" stroke="#3489bd" stroke-width="2"/><text x="50%" y="50%" dy=".35em" text-anchor="middle" fill="#19557e" font-family="Arial,sans-serif" font-size="13" font-weight="700">${count}</text></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
@@ -162,10 +162,10 @@ export async function createTencentMap({ container, alerts = [], onAlertClick, o
     normal: new TMap.MarkerStyle({ width: 34, height: 46, anchor: { x: 17, y: 46 }, src: pinSource('#ffd05b') }),
   };
   try {
+    // Use Tencent's default light basemap to match the application theme.
     map = new TMap.Map(container, {
       center: new TMap.LatLng(Number(center.latitude), Number(center.longitude)),
       zoom: points.length ? zoomForPoints(points) : TENCENT_MAP_CONFIG.zoom,
-      mapStyleId: 'DARK',
     });
     marker = new TMap.MultiMarker({
       map,

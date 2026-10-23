@@ -2,7 +2,7 @@
 body.app-ready { --weather-header-height:176px; }
 body.app-ready .topbar.main-navigation-header {
   display:grid;
-  grid-template-columns:minmax(200px,1fr) minmax(600px,1.8fr) minmax(290px,1fr);
+  grid-template-columns:minmax(290px,1fr) minmax(600px,1.8fr) minmax(200px,1fr);
   grid-template-rows:36px 50px 64px;
   align-items:center;
   gap:8px 20px;
@@ -10,7 +10,7 @@ body.app-ready .topbar.main-navigation-header {
   min-height:0;
   padding:0 8px 10px;
 }
-body.app-ready .main-navigation-header #patrol-agent-root { position:static; grid-area:1 / 1 / 4 / 2; transform:none; min-width:0; }
+body.app-ready .main-navigation-header #patrol-agent-root { position:static; grid-area:2 / 3 / 4 / 4; justify-self:end; align-self:end; transform:none; min-width:0; }
 body.app-ready .main-navigation-header .home-btn { grid-area:1 / 1 / 4 / 2; justify-self:start; }
 body.app-ready .main-navigation-header .page-heading { display:block; position:relative; grid-area:1 / 2 / 3 / 3; left:auto; top:auto; transform:none; min-width:0; text-align:center; white-space:nowrap; align-self:center; }
 body.app-ready .main-navigation-header .page-heading h1 { font-size:clamp(25px,1.9vw,36px); letter-spacing:3px; }
@@ -18,9 +18,9 @@ body.app-ready .main-navigation-header .page-heading .eyebrow { margin-bottom:8p
 body.app-ready .main-navigation-header .page-heading .eyebrow:empty { display:none; }
 body.app-ready .main-navigation-header .page-heading::before { top:-12px; max-width:100%; }
 body.app-ready .main-navigation-header .page-heading::after { display:none; }
-body.app-ready .main-navigation-header .top-actions { display:flex; grid-area:1 / 3; align-self:start; justify-content:flex-end; gap:10px; min-width:0; margin:0; }
+body.app-ready .main-navigation-header .top-actions { display:flex; grid-area:1 / 3; align-self:start; justify-content:flex-end; gap:10px; min-width:0; margin:18px 0 0; }
 body.app-ready .main-navigation-header .ghost-btn { display:inline-block; min-width:0; padding:8px 12px; font-size:12px; white-space:nowrap; }
-body.app-ready .main-navigation-header #weather-root { grid-area:2 / 3 / 4 / 4; justify-self:end; align-self:end; width:100%; max-width:370px; }
+body.app-ready .main-navigation-header #weather-root { grid-area:2 / 1 / 4 / 2; justify-self:start; align-self:end; width:100%; max-width:370px; }
 body.app-ready .main-navigation-header #order-summary:empty { display:none; }
 .module-nav { grid-area:3 / 2; display:grid; grid-template-columns:1fr 1fr 1.3fr 1fr; gap:10px; width:100%; max-width:860px; justify-self:center; }
 .module-nav-button {
@@ -114,9 +114,9 @@ body.app-ready .order-status-filter.filter-completed { color: #41ddb0; border-co
 body.app-ready .order-status-filter.filter-all { color: #6ce5ff; border-color: rgba(33, 223, 255, .6); background: rgba(33, 223, 255, .12); }
 
 @media (min-width:1101px) and (max-width:1400px) {
-  body.app-ready .topbar.main-navigation-header { grid-template-columns:minmax(130px,1fr) minmax(600px,1.8fr) minmax(270px,1fr); gap:8px 14px; }
-  body.app-ready .main-navigation-header .patrol-agent-label { display:none; }
-  body.app-ready .main-navigation-header .patrol-agent-launch-arrow { display:none; }
+  body.app-ready .topbar.main-navigation-header { grid-template-columns:minmax(270px,1fr) minmax(600px,1.8fr) minmax(130px,1fr); gap:8px 14px; }
+  body.app-ready .topbar.main-navigation-header #patrol-agent-root .patrol-agent-label { display:none; }
+  body.app-ready .topbar.main-navigation-header #patrol-agent-root .patrol-agent-launch-arrow { display:none; }
   .module-nav { gap:8px; }
   .module-nav-button { padding:9px; gap:7px; }
   .module-nav-label strong { font-size:14px; letter-spacing:0; }
@@ -125,22 +125,23 @@ body.app-ready .order-status-filter.filter-all { color: #6ce5ff; border-color: r
 @media (max-width:1100px) {
   body.app-ready { --weather-header-height:266px; }
   body.app-ready .topbar.main-navigation-header { grid-template-columns:74px minmax(0,1fr) 74px; grid-template-rows:70px 64px 108px; gap:8px 12px; padding:0 0 8px; }
-  body.app-ready .main-navigation-header #patrol-agent-root,body.app-ready .main-navigation-header .home-btn { grid-area:1 / 1; }
+  body.app-ready .main-navigation-header #patrol-agent-root { grid-area:3 / 3; align-self:center; }
+  body.app-ready .main-navigation-header .home-btn { grid-area:1 / 1; }
   body.app-ready .main-navigation-header .home-btn { padding:8px; font-size:12px; }
   body.app-ready .main-navigation-header .page-heading { grid-area:1 / 2; }
   body.app-ready .main-navigation-header .page-heading h1 { font-size:27px; letter-spacing:2px; }
   body.app-ready .main-navigation-header .page-heading::before { top:-7px; }
-  body.app-ready .main-navigation-header .top-actions { grid-area:1 / 3; align-self:center; }
+  body.app-ready .main-navigation-header .top-actions { grid-area:1 / 3; align-self:center; margin:0; }
   body.app-ready .main-navigation-header .ghost-btn { display:none; }
   body.app-ready .main-navigation-header .patrol-agent-label,body.app-ready .main-navigation-header .patrol-agent-launch-arrow { display:none; }
   body.app-ready .main-navigation-header .patrol-agent-launcher { padding:0; min-height:50px; }
   body.app-ready .main-navigation-header .patrol-agent-orb { width:50px; height:50px; }
   body.app-ready .main-navigation-header .patrol-agent-orb img { width:46px; height:46px; }
-  body.app-ready .main-navigation-header #weather-root { grid-area:3 / 1 / 4 / -1; max-width:none; }
+  body.app-ready .main-navigation-header #weather-root { grid-area:3 / 1 / 4 / 3; max-width:none; }
   .module-nav { grid-area:2 / 1 / 3 / -1; max-width:700px; }
 }
 @media (max-width:700px) {
-  body.app-ready .topbar.main-navigation-header { grid-template-columns:56px minmax(0,1fr) 40px; grid-template-rows:64px 64px auto; height:auto; gap:8px; }
+  body.app-ready .topbar.main-navigation-header { grid-template-columns:56px minmax(0,1fr) 56px; grid-template-rows:64px 64px auto; height:auto; gap:8px; }
   body.app-ready .main-navigation-header .page-heading h1 { font-size:clamp(17px,4.7vw,25px); letter-spacing:.5px; }
   body.app-ready .main-navigation-header .page-heading .eyebrow { font-size:8px; letter-spacing:0; margin-bottom:5px; }
   body.app-ready .main-navigation-header .page-heading::before { top:-9px; }
@@ -160,13 +161,7 @@ body.app-ready .order-status-filter.filter-all { color: #6ce5ff; border-color: r
 /* The same Dify assistant remains available on every business module. */
 body.app-ready:not(.dashboard-page) #patrol-agent-root {
   display:block;
-  position:absolute;
-  left:8px;
-  top:104px;
-  right:auto;
-  bottom:auto;
   z-index:850;
-  transform:none;
 }
 body.app-ready:not(.dashboard-page) #patrol-agent-root .patrol-agent-launcher {
   min-height:56px;
@@ -182,9 +177,8 @@ body.app-ready:not(.dashboard-page) #patrol-agent-root .patrol-agent-label { dis
 body.app-ready:not(.dashboard-page) #patrol-agent-root .patrol-agent-caption { color:#81b9ba; }
 body.app-ready:not(.dashboard-page) #patrol-agent-root .patrol-agent-launch-arrow { opacity:1; transform:none; margin-left:4px; }
 @media(max-width:1100px) {
-  body.app-ready:not(.dashboard-page) .topbar.main-navigation-header { grid-template-columns:56px minmax(0,1fr) 40px; }
+  body.app-ready:not(.dashboard-page) .topbar.main-navigation-header { grid-template-columns:56px minmax(0,1fr) 56px; }
   body.app-ready:not(.dashboard-page) .main-navigation-header .home-btn { justify-self:end; width:58px; padding:8px 4px; }
-  body.app-ready:not(.dashboard-page) #patrol-agent-root { left:0; top:7px; right:auto; bottom:auto; }
   body.app-ready:not(.dashboard-page) #patrol-agent-root .patrol-agent-label { display:none; }
   body.app-ready:not(.dashboard-page) #patrol-agent-root .patrol-agent-launch-arrow { display:none; }
   body.app-ready:not(.dashboard-page) #patrol-agent-root .patrol-agent-launcher { min-height:52px; padding:3px; }

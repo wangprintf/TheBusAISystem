@@ -58,7 +58,7 @@ test('aggregate numbers zoom into their area and expanded pins open the correct 
   const sdk = sdkFixture(t);
   const opened = [];
   const controller = await createTencentMap({ container: { innerHTML: '' }, alerts: orders, onAlertClick: id => opened.push(id) });
-  assert.equal(sdk.map.mapStyleId, 'DARK');
+  assert.equal(sdk.map.mapStyleId, undefined, 'use the default light basemap');
   assert.equal(sdk.cluster.geometries.length, 2);
   assert.equal(sdk.cluster.maxZoom, 17);
   assert.equal(sdk.cluster.enableDefaultStyle, false);

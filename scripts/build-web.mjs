@@ -23,6 +23,7 @@ const files = [
   'navigation.css',
   'weather.css',
   'road-health.css',
+  'light-theme.css',
 ];
 const assetFiles = ['mobius-icon.svg', 'zhixunyun-logo.png', 'zhixunyun-logo.svg', 'patrol-agent.png'];
 

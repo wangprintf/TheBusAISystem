@@ -7,6 +7,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const publicFiles = new Set([
+  '/web/light-theme.css',
   '/web/road-health.css', '/web/js/road-health.js', '/web/js/road-health-data.js',
   '/tests/fixtures/road-health-bootstrap.js',
   '/web/navigation.css', '/web/weather.css', '/web/js/weather.js',
